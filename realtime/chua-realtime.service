@@ -1,0 +1,18 @@
+# systemd unit for the realtime server. Install:
+#   cp realtime/chua-realtime.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now chua-realtime
+# For a second node, copy it as chua-realtime2.service and change --port and --node.
+[Unit]
+Description=An Tam Nam Chua realtime server
+After=network.target mariadb.service mysql.service redis-server.service
+
+[Service]
+ExecStart=/usr/bin/php /var/www/duykhang/chua/realtime/server.php --port=9502 --node=node1
+WorkingDirectory=/var/www/duykhang/chua
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=2
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

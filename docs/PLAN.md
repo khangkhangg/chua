@@ -208,7 +208,7 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] F07 Props: urn, bell tower, lion statues, stone lanterns, bonsai, frangipani trees, palms, benches, lotus ponds
 - [x] F08 Keyboard movement (WASD or arrows, Shift to walk slowly), collision, navmesh
 - [x] F09 Camera: 3/4 diorama follow plus orbit (Q/E), zoom with the wheel
-- [ ] F10 Zones: courtyard, hall interior (walking only, no running), gardens
+- [x] F10 Zones: courtyard, hall interior (walking only, no running), gardens
 
 ### P2 Look and feel
 - [x] F11 Low-resolution pixel render with nearest-neighbour upscale
@@ -217,13 +217,13 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] F14 Day and night from SunCalc and local time, sky gradient, stars, moon
 - [x] F15 Lanterns and candles: emissive + bloom, 8 nearest real lights
 - [x] F16 Incense smoke GPU particles + density driven by the crowd
-- [ ] F17 Light shafts from the hall doors, haze inside the hall
+- [x] F17 Light shafts from the hall doors, haze inside the hall
 - [x] F18 Ambience by time and zone (birds, wind chimes, crickets, frogs, distant city)
 - [x] F19 Footsteps by surface, 3D positional audio
-- [ ] F20 Đại hồng chung bell schedule (around 4:00 and 18:00) + random small bells
+- [x] F20 Đại hồng chung bell schedule (around 4:00 and 18:00) + random small bells
 
 ### P3 Character and rituals
-- [ ] F21 Name entry and guest session (name filter)
+- [x] F21 Name entry and guest session (name filter)
 - [x] F22 Character creator: body (adult, elder, child; male, female), face, hair (including shaved)
 - [x] F23 Clothing: áo dài, áo tràng, áo bà ba, modern; colour pickers per slot
 - [x] F24 Accessories: tràng hạt (prayer beads), nón lá, bag, flowers, mâm quả, incense bundle
@@ -231,7 +231,7 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] F26 Keyboard actions: E interact, 1–6 postures, F light incense, B ring bell, O offer, Enter chat, M map, Tab people list
 - [x] F27 Light incense → place in the urn (animation + sound + smoke)
 - [x] F28 Ring the bell (bell swing + rich decaying tone heard across the courtyard)
-- [ ] F29 Xin xăm fortune sticks (shake, a stick falls, read the verse)
+- [x] F29 Xin xăm fortune sticks (shake, a stick falls, read the verse)
 
 ### P4 Living temple (NPCs)
 - [ ] F30 Seeded deterministic NPC system synced to server time
@@ -243,40 +243,40 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] F36 Dogs: sleep on the steps, wander, bark occasionally, rarely seen
 
 ### P5 Multiplayer
-- [ ] F37 OpenSwoole WebSocket server, binary protocol, 10 updates per second
-- [ ] F38 Shards (150 people), automatic assignment, invite links that join a friend's shard
-- [ ] F39 Interest grid (nearest 60), client interpolation
-- [ ] F40 Live avatars with nameplates, synced postures and actions
-- [ ] F41 Chat bubbles + emotes, rate limits, mute and report
+- [x] F37 OpenSwoole WebSocket server, binary protocol, 10 updates per second
+- [x] F38 Shards (150 people), automatic assignment, invite links that join a friend's shard
+- [x] F39 Interest grid (nearest 60), client interpolation
+- [x] F40 Live avatars with nameplates, synced postures and actions
+- [x] F41 Chat bubbles + emotes, rate limits, mute and report
 - [ ] F42 VAT instanced crowd rendering + billboards for distant people
 
 ### P6 Prayer rooms
-- [ ] F43 Room picker: main hall, Quan Âm shrine, ancestor hall, meditation room
+- [x] F43 Room picker: main hall, Quan Âm shrine, ancestor hall, meditation room
 - [ ] F44 Room instances (about 30 people) with cushion slots and kneeling sync
-- [ ] F45 Group chanting with a shared audio timeline (synced to the server clock)
-- [ ] F46 Wish wall: write a prayer, hang it, others can see it (Mongo, moderated)
-- [ ] F47 Smoke and haze density rise with occupancy
+- [x] F45 Group chanting with a shared audio timeline (synced to the server clock)
+- [x] F46 Wish wall: write a prayer, hang it, others can see it (Mongo, moderated)
+- [x] F47 Smoke and haze density rise with occupancy
 
 ### P7 Candle by QR code
-- [ ] F48 Candle stand UI: size, wish, name
-- [ ] F49 MySQL order + VietQR generator (amount + memo)
-- [ ] F50 Payment webhook (PayOS, SePay or Casso), signature check, idempotency
-- [ ] F51 Live candle lights in the shard, burns 24 hours, glows at night
-- [ ] F52 Receipt and donation transparency page
+- [x] F48 Candle stand UI: size, wish, name
+- [x] F49 MySQL order + VietQR generator (amount + memo)
+- [x] F50 Payment webhook (PayOS, SePay or Casso), signature check, idempotency
+- [x] F51 Live candle lights in the shard, burns 24 hours, glows at night
+- [x] F52 Receipt and donation transparency page
 
 ### P8 Scale
-- [ ] F53 Redis presence, pub/sub, global counters
-- [ ] F54 Several realtime nodes behind a sticky load balancer, shard directory
+- [x] F53 Redis presence, pub/sub, global counters
+- [x] F54 Several realtime nodes behind a sticky load balancer, shard directory
 - [ ] F55 CDN for assets, meshopt and KTX2, lazy-loaded halls
-- [ ] F56 k6 load test with 10,000 bots, monitoring (Prometheus or Grafana)
-- [ ] F57 Automatic quality downgrade (FPS watchdog)
+- [x] F56 k6 load test with 10,000 bots, monitoring (Prometheus or Grafana)
+- [x] F57 Automatic quality downgrade (FPS watchdog)
 
 ### P9 Launch
-- [ ] F58 Mobile touch joystick + action buttons
-- [ ] F59 Vietnamese and English text
-- [ ] F60 Settings: volume per channel, quality, reduced motion
-- [ ] F61 Moderation dashboard (PHP admin)
-- [ ] F62 Analytics (visits, rituals done, candles)
+- [x] F58 Mobile touch joystick + action buttons
+- [x] F59 Vietnamese and English text
+- [x] F60 Settings: volume per channel, quality, reduced motion
+- [x] F61 Moderation dashboard (PHP admin)
+- [x] F62 Analytics (visits, rituals done, candles)
 
 ---
 
@@ -290,7 +290,15 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] Mountain terrain with forest and mist around the temple terrace
 - [x] Incense smoke setting: Off, A little, Full
 
-Partly done: F10 (zones only switch the view and toasts), F20 (the bell rings at random, not on the real schedule), F21 (name entry exists, no server session or name filter yet), F29 not started, F30 (NPCs are random per browser, not yet synced to server time).
+Status notes (November 2026):
+
+- **F37** The realtime hub runs on plain PHP streams (tested here: 600 bots at 10 updates per second, 150 per courtyard) and on OpenSwoole. The OpenSwoole path is written to its API but has not been run yet, because the extension could not be installed in the build environment. Try it on spo2x before relying on it.
+- **F43–F44** The seven halls are the prayer rooms. Visitors in the same courtyard see each other kneel and bow on the cushions. There are no separate 30-person room copies; a courtyard is the unit (150 people).
+- **F45** Chanting and the wooden fish follow the server clock, so everyone in a courtyard hears the same beat.
+- **F50** SePay and PayOS webhooks are checked with tests and a simulated payment. A real bank transfer has not been tried yet (step 8 of DEPLOY.md).
+- **F56** Load scripts exist (`tests/load/bots.php`, `tests/load/k6_walkers.js`). The 10,000-visitor run itself needs k6 and the real server.
+- Not done: **F03** asset list, **F04** review by a monk or temple adviser (needs a person), **F30** NPCs synced between visitors (each browser still runs its own monks, visitors and dog), **F42** vertex-animation crowds (the nearest-60 limit keeps it light for now).
+- Not applicable while everything is drawn from code: **F13** baked lightmaps and **F55** model compression (there are no model files). Static files get week-long cache headers.
 
 ## 7. Prompts per feature
 

@@ -1,31 +1,67 @@
 # An Tâm Nam Chùa
 
-A Vietnamese mountain temple you can walk through in the browser: pixel-style 3D, day and night, seven halls to enter and pray in, monks, visitors, kids and a temple dog.
+A Vietnamese mountain temple you can walk through in the browser: pixel-style 3D, day and night, seven halls to enter and pray in, monks, visitors, kids and a temple dog. Real visitors see each other and chat. Candles are offered by VietQR bank transfer.
 
-## Run it
+## Run it locally
 
-Needs PHP 8.1 or newer. Three.js and the fonts load from public CDNs, so there is no build step.
+Needs PHP 8.1+ with `pdo_mysql`, and MySQL 8 or MariaDB 10.6+. Redis (with the `redis` PHP extension) is optional.
+
+```bash
+mysql -uroot -e "CREATE DATABASE chua CHARACTER SET utf8mb4; CREATE USER 'chua'@'localhost' IDENTIFIED BY 'devpass'; GRANT ALL ON chua.* TO 'chua'@'localhost';"
+```
+
+```bash
+mysql -uroot chua < sql/001_schema.sql
+```
+
+```bash
+cp config.local.example.php config.local.php
+```
+
+Edit `config.local.php`: the database password, `realtime.public_url` set to `ws://127.0.0.1:9502`, and for trying candles `payments.enabled` and `payments.test_mode` set to `true`. Then start the realtime server and the site in two terminals:
+
+```bash
+php realtime/server.php
+```
 
 ```bash
 php -S localhost:8000 -t public
 ```
 
-Then open http://localhost:8000.
+Open http://localhost:8000. Without a database the temple still opens; you visit on your own and candles and wishes are off.
+
+## Tests
+
+```bash
+php tests/run.php
+```
+
+Needs a `chua_test` database loaded from `sql/001_schema.sql` (password from `CHUA_TEST_DB_PASS`, default `devpass`). Load tests:
+
+```bash
+php tests/load/bots.php --url=ws://127.0.0.1:9502 --bots=600 --seconds=20
+```
+
+```bash
+k6 run -e URL=wss://chua.vietnamcos.com/ws -e VUS=10000 tests/load/k6_walkers.js
+```
 
 ## Layout
 
 ```
-chua/
-├── config.php          site settings (temple name, asset version)
-├── public/
-│   ├── index.php       page shell
-│   ├── css/temple.css  panels, labels, bubbles
-│   └── js/temple.js    the whole scene: world, halls, people, sound, controls
-└── docs/PLAN.md        plan, phases and the feature checklist
+config.php                 defaults; real values go in config.local.php (not committed)
+sql/001_schema.sql         MySQL / MariaDB tables
+src/                       PHP: database, name filter, Redis bus, payments, realtime hub
+realtime/server.php        realtime server (OpenSwoole if installed, plain PHP otherwise)
+realtime/chua-realtime.service  systemd unit
+public/index.php           the temple page
+public/js/temple.js        the scene: world, halls, people, sound, controls, live visitors
+public/js/net.js           connection to the realtime server
+public/js/i18n.js          Vietnamese and English text
+public/api/                session, shard, stats, wishes, candle, candles, payment-webhook, event
+public/donations.php       public list of candle offerings
+public/admin/              moderation and statistics (password in config.local.php)
+tests/                     PHP tests and load tests
+docs/PLAN.md               plan and feature checklist
+DEPLOY.md                  deploy runbook for chua.vietnamcos.com
 ```
-
-## Where it stands
-
-Phases 1 to 4 of `docs/PLAN.md` are mostly built, as one browser-side scene. Everyone you see is computed in your own browser. The visitor count is a placeholder, and leaves and gifts are saved only in your browser.
-
-Next is Phase 5: an OpenSwoole server so real visitors see each other, then MySQL and MongoDB for accounts, blessings and candle orders. After that, `public/js/temple.js` should be split into the modules listed in the plan.
