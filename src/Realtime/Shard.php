@@ -36,6 +36,31 @@ final class Shard
         unset($this->players[$p->id]);
     }
 
+    /** Puts a player in the first room of a hall with space, or back in the courtyard (hall < 0). */
+    public function enterRoom(Player $p, int $hall, int $size): void
+    {
+        if ($hall < 0) {
+            $p->room = '';
+            return;
+        }
+        if (str_starts_with($p->room, 'h' . $hall . '#')) {
+            return;
+        }
+        $counts = [];
+        foreach ($this->players as $o) {
+            if ($o !== $p && $o->room !== '') {
+                $counts[$o->room] = ($counts[$o->room] ?? 0) + 1;
+            }
+        }
+        for ($n = 1; ; $n++) {
+            $room = 'h' . $hall . '#' . $n;
+            if (($counts[$room] ?? 0) < $size) {
+                $p->room = $room;
+                return;
+            }
+        }
+    }
+
     /**
      * Nearest visitors to each player, using a 5 m grid so a full shard costs
      * far less than comparing every pair.
@@ -61,7 +86,7 @@ final class Shard
                 }
                 for ($iz = $cz - $reach; $iz <= $cz + $reach; $iz++) {
                     foreach ($grid[$ix][$iz] ?? [] as $o) {
-                        if ($o === $me) {
+                        if ($o === $me || $o->room !== $me->room) {
                             continue;
                         }
                         $d = ($o->x - $me->x) ** 2 + ($o->z - $me->z) ** 2;

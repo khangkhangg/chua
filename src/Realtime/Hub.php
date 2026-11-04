@@ -108,6 +108,7 @@ final class Hub
             'act' => $this->act($p, (string) ($msg['a'] ?? '')),
             'report' => $this->report($p, (int) ($msg['id'] ?? 0), (string) ($msg['reason'] ?? '')),
             'ping' => $this->sendJson($fd, ['t' => 'pong', 'c' => $msg['c'] ?? 0, 's' => $this->ms()]),
+            'room' => $this->room($p, (int) ($msg['h'] ?? -1)),
             default => null,
         };
     }
@@ -281,6 +282,16 @@ final class Hub
         $this->sendJson($p->fd, ['t' => 'reported', 'id' => $id]);
     }
 
+    private function room(Player $p, int $hall): void
+    {
+        $shard = $this->shards[$p->shard] ?? null;
+        if ($shard === null || $hall > 31) {
+            return;
+        }
+        $shard->enterRoom($p, $hall, (int) ($this->cfg['room_size'] ?? 30));
+        $this->sendJson($p->fd, ['t' => 'room', 'room' => $p->room]);
+    }
+
     private function near(Player $from, array $msg, float $radius, bool $includeSelf): void
     {
         $shard = $this->shards[$from->shard] ?? null;
@@ -290,7 +301,7 @@ final class Hub
         $json = $this->encode($msg);
         $r2 = $radius * $radius;
         foreach ($shard->players as $o) {
-            if (($o === $from && $includeSelf) || ($o !== $from && ($o->x - $from->x) ** 2 + ($o->z - $from->z) ** 2 <= $r2)) {
+            if (($o === $from && $includeSelf) || ($o !== $from && $o->room === $from->room && ($o->x - $from->x) ** 2 + ($o->z - $from->z) ** 2 <= $r2)) {
                 $this->send($o->fd, $json, false);
             }
         }

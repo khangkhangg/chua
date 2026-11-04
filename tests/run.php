@@ -217,5 +217,31 @@ $hub->close(1);
 check('leave announced', ($out->json(2, 'leave')[0]['id'] ?? 0) === $w1['id']);
 check('metrics text', str_contains($hub->metrics(), 'chua_players '));
 
+// ---------- rooms inside the halls ----------
+$rs = new Shard('sroom01');
+$people = [];
+for ($i = 0; $i < 31; $i++) {
+    $pl = new Player(500 + $i, 'R' . $i, [], 'h');
+    $pl->x = 1.0;
+    $pl->z = -14.0 + $i * 0.01;
+    $rs->add($pl);
+    $people[] = $pl;
+}
+foreach ($people as $pl) {
+    $rs->enterRoom($pl, 0, 30);
+}
+check('first 30 share a room', count(array_filter($people, static fn ($p) => $p->room === 'h0#1')) === 30);
+check('31st opens a second room', $people[30]->room === 'h0#2');
+$outside = new Player(600, 'Out', [], 'h');
+$outside->x = 1.0;
+$outside->z = -14.0;
+$rs->add($outside);
+$v = $rs->visibility(60, 40.0);
+check('room sees only its room', count($v[$people[0]->id]) === 29);
+check('second room is alone', count($v[$people[30]->id]) === 0);
+check('courtyard does not see into halls', count($v[$outside->id]) === 0);
+$rs->enterRoom($people[0], -1, 30);
+check('leaving a hall returns to the courtyard', $people[0]->room === '');
+
 printf("%d passed, %d failed\n", $passed, $failed);
 exit($failed ? 1 : 0);
