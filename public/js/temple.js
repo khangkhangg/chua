@@ -844,70 +844,146 @@ const agents=[];
 function angLerp(a,b,t){ const d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; return a+d*t; }
 function freeSpot(x0,x1,z0,z1){ for (let i=0;i<40;i++){ const x=R(x0,x1), z=R(z0,z1); if (!blocked(x,z,.6) && groundY(x,z)===0) return [x,z]; } return [0,5]; }
 let me;
+/* ================= computer-run visitors on a shared timetable =================
+   Every monk, visitor, kid and the dog follows a plan worked out from (world seed, their
+   number, time slot). In a live courtyard the seed and clock come from the server, so every
+   browser shows the same people in the same places, and nothing extra is sent. */
+function h32(a,b,c){ let x=Math.imul(a|0,0x27d4eb2d)^Math.imul(b|0,0x165667b1)^Math.imul((c|0)+0x9e37,0x1b873593); x=Math.imul(x^(x>>>15),0x2c1b3c6d); x=Math.imul(x^(x>>>12),0x297a2d39); x^=x>>>15; return (x>>>0)/4294967296; }
+const WORLD_CLOCK={ seed:9101, now(){ return (typeof net!=='undefined'&&net.state==='live')?net.now()/1000:Date.now()/1000; } };
+
+// ---- walking map: courtyard grid plus stairs, doors and spots inside the halls ----
+const NAV={pts:[],adj:[],cache:new Map()};
+function navAdd(x,z){ NAV.pts.push([x,z]); NAV.adj.push([]); return NAV.pts.length-1; }
+function navLink(i,j){ if (i===j||NAV.adj[i].includes(j)) return; NAV.adj[i].push(j); NAV.adj[j].push(i); }
+function segFree(a,b,r=.32){ const [x0,z0]=a,[x1,z1]=b, n=Math.max(1,Math.ceil(Math.hypot(x1-x0,z1-z0)/.4)); for (let i=1;i<n;i++){ const t=i/n, x=x0+(x1-x0)*t, z=z0+(z1-z0)*t; if (blocked(x,z,r)||groundY(x,z)!==0) return false; } return true; }
+function navAttach(i,max=3){ const p=NAV.pts[i]; const near=GRID_NODES.map(j=>[Math.hypot(NAV.pts[j][0]-p[0],NAV.pts[j][1]-p[1]),j]).sort((a,b)=>a[0]-b[0]); let n=0; for (const [d,j] of near){ if (d>9) break; if (segFree(p,NAV.pts[j])){ navLink(i,j); if (++n>=max) break; } } }
+const GRID_NODES=[];
+for (let x=-27.5;x<=27.6;x+=2.5) for (let z=-6;z<=20.1;z+=2.5){ if (!blocked(x,z,.6)&&groundY(x,z)===0) GRID_NODES.push(navAdd(x,z)); }
+for (let a=0;a<GRID_NODES.length;a++) for (let b=a+1;b<GRID_NODES.length;b++){ const i=GRID_NODES[a], j=GRID_NODES[b], d=Math.hypot(NAV.pts[i][0]-NAV.pts[j][0],NAV.pts[i][1]-NAV.pts[j][1]); if (d<3.6&&segFree(NAV.pts[i],NAV.pts[j])) navLink(i,j); }
+const GATE_NODES=[22,25,29,33,37,41,44].map(z=>navAdd(0,z));
+for (let i=1;i<GATE_NODES.length;i++) navLink(GATE_NODES[i-1],GATE_NODES[i]);
+navAttach(GATE_NODES[0],3);
+const DOG_GATE=GATE_NODES[GATE_NODES.length-1];
+const URN_NODES=Array.from({length:8},(_,i)=>{ const a=i/8*Math.PI*2; const n=navAdd(URN.x+Math.cos(a)*2.1,URN.z+Math.sin(a)*2.1); navAttach(n,2); return n; }).filter(n=>NAV.adj[n].length);
+const BELL_NODE=navAdd(BELLPOS.x-2.4,BELLPOS.z+.3); navAttach(BELL_NODE,2);
+const POND_NODES=[10.5,12,13.5].map(x=>{ const n=navAdd(x,5.9); navAttach(n,2); return n; });
+const LISTEN_NODES=[[7.6,-5.2],[9,-5.3],[10.4,-5.2],[11.6,-4.9],[8.2,-4],[10,-3.9]].map(([x,z])=>{ const n=navAdd(x,z); navAttach(n,2); return n; }).filter(n=>NAV.adj[n].length);
+const HALL={};  // building index -> {spots:[node], cushions:[node], monk:[node]}
+BUILDINGS.slice(0,5).forEach((b,bi)=>{
+  const w=(lx,lz)=>l2w(b,lx,lz);
+  const bottom=navAdd(...w(0,b.pd/2+b.run+.9)); navAttach(bottom,3);
+  const top=navAdd(...w(0,b.pd/2-.5)); navLink(bottom,top);
+  const tz=b.bz+3.13, inZ=Math.max(tz+.9,b.fz-.9);
+  const ins=b.doorXs.map(dx=>{ const out=navAdd(...w(dx,b.fz+.8)); navLink(top,out); const inn=navAdd(...w(dx,inZ)); navLink(out,inn); return inn; });
+  const nearestIn=(lx)=>ins[b.doorXs.reduce((bi2,dx,i)=>Math.abs(dx-lx)<Math.abs(b.doorXs[bi2]-lx)?i:bi2,0)];
+  const H={spots:[],cushions:[],monk:[]};
+  if (b===MAINHALL){
+    for (const c of CUSHIONS){ const [lx,lz]=w2l(b,c.x,c.z); const n=navAdd(...w(lx,lz+.15)); navLink(nearestIn(lx),n); H.cushions.push(n); }
+    for (const lx of [-1.5,-.5,.5,1.5]){ const n=navAdd(...w(lx,-.7)); navLink(nearestIn(lx),n); H.monk.push(n); }
+  } else {
+    for (const lx of [-1.2,0,1.2]){ const n=navAdd(...w(lx,inZ+.02)); navLink(ins[0],n); H.spots.push(n); }
+    H.monk=H.spots;
+  }
+  HALL[bi]=H;
+});
+function navNearest(x,z){ let best=GRID_NODES[0], bd=1e9; for (const j of GRID_NODES){ const d=Math.hypot(NAV.pts[j][0]-x,NAV.pts[j][1]-z); if (d<bd){ bd=d; best=j; } } return best; }
+function navPath(a,b){
+  const key=a*4096+b; if (NAV.cache.has(key)) return NAV.cache.get(key);
+  const n=NAV.pts.length, dist=new Float64Array(n).fill(Infinity), prev=new Int32Array(n).fill(-1), done=new Uint8Array(n); dist[a]=0;
+  for (;;){ let u=-1, ud=Infinity; for (let i=0;i<n;i++) if (!done[i]&&dist[i]<ud){ ud=dist[i]; u=i; } if (u<0||u===b) break; done[u]=1;
+    for (const v of NAV.adj[u]){ const d=ud+Math.hypot(NAV.pts[u][0]-NAV.pts[v][0],NAV.pts[u][1]-NAV.pts[v][1]); if (d<dist[v]){ dist[v]=d; prev[v]=u; } } }
+  const out=[]; if (dist[b]===Infinity){ out.push(NAV.pts[a],NAV.pts[b]); } else { for (let v=b;v!==-1;v=prev[v]) out.push(NAV.pts[v]); out.reverse(); }
+  NAV.cache.set(key,out); if (NAV.cache.size>3000) NAV.cache.delete(NAV.cache.keys().next().value); return out;
+}
+function polyAt(pts,lens,total,d){ if (d<=0) return [pts[0][0],pts[0][1],pts.length>1?Math.atan2(pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]):0]; let acc=0;
+  for (let i=1;i<pts.length;i++){ const L=lens[i-1]; if (acc+L>=d||i===pts.length-1){ const t=L>0?Math.min(1,(d-acc)/L):1, a=pts[i-1], b=pts[i]; return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,Math.atan2(b[0]-a[0],b[1]-a[1])]; } acc+=L; }
+  return [pts[pts.length-1][0],pts[pts.length-1][1],0]; }
+function route(pts){ const lens=[]; let total=0; for (let i=1;i<pts.length;i++){ const L=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); lens.push(L); total+=L; } return {pts,lens,total}; }
+
+// ---- plans ----
+const NPC_SLOT={visitor:40,monk:50,kid:10};
+const faceTo=(x,z,tx,tz)=>Math.atan2(tx-x,tz-z);
+function npcPlan(a,k){
+  if (a.plans.has(k)) return a.plans.get(k);
+  const r=n=>h32(WORLD_CLOCK.seed+a.idx*7919,k,n), pickN=(arr,n)=>arr[Math.floor(r(n)*arr.length)%arr.length];
+  const at=n=>NAV.pts[n];
+  let node, acts=[], jit=.35;
+  if (a.kind==='visitor'){
+    const c=r(0);
+    if (c<.24&&URN_NODES.length){ node=pickN(URN_NODES,1); const [x,z]=at(node), f=faceTo(x,z,URN.x,URN.z); jit=.1;
+      acts=[{pose:'stand',dur:.6,face:f,inc:true},{pose:'pray',dur:5,face:f,inc:true},{pose:'bow',dur:.9,face:f,inc:true},{pose:'pray',dur:.7,face:f,inc:true},{pose:'bow',dur:.9,face:f,inc:true},{pose:'pray',dur:.7,face:f,inc:true},{pose:'bow',dur:.9,face:f,inc:true},{pose:'stand',dur:.5,face:f,ev:'burst'}]; }
+    else if (c<.48){ const cs=HALL[0].cushions; node=cs[(a.idx+k*7)%cs.length]; const f=MAINHALL.rot+Math.PI; jit=0;
+      acts=[{pose:'pray',dur:1.5,face:f},{pose:'kneel',dur:3,face:f},{pose:'prostrate',dur:6+r(2)*4,face:f},{pose:'kneel',dur:3,face:f}]; }
+    else if (c<.68){ const bi=1+Math.floor(r(1)*4), b=BUILDINGS[bi]; node=pickN(HALL[bi].spots,2); const f=b.rot+Math.PI; jit=.12;
+      acts=[{pose:'pray',dur:3+r(3)*2,face:f},{pose:'bow',dur:1.2,face:f},{pose:r(4)<.5?'kneel':'pray',dur:4+r(5)*3,face:f}]; }
+    else if (c<.77&&LISTEN_NODES.length){ node=pickN(LISTEN_NODES,1); const [x,z]=at(node); jit=.2; acts=[{pose:'sit',dur:14+r(2)*10,face:faceTo(x,z,9,-8.8)}]; }
+    else if (c<.84){ node=pickN(POND_NODES,1); jit=.3; acts=[{pose:'stand',dur:4+r(2)*4,face:0}]; }
+    else { node=pickN(GRID_NODES,1); acts=[{pose:r(2)<.3?'pray':'stand',dur:2+r(3)*4}]; }
+  } else if (a.kind==='monk'){
+    const c=r(0);
+    if (c<.42){ node=pickN(GRID_NODES,1); acts=[{pose:'pray',dur:3+r(2)*3}]; }
+    else if (c<.8){ const bi=Math.floor(r(1)*5), b=BUILDINGS[bi]; node=pickN(HALL[bi].monk,2); const f=b.rot+Math.PI; jit=.08; acts=[{pose:'pray',dur:5+r(3)*4,face:f},{pose:'bow',dur:1.3,face:f}]; }
+    else { node=BELL_NODE; jit=.05; acts=[{pose:'pray',dur:2,face:Math.PI/2},{pose:'stand',dur:1,face:Math.PI/2,ev:'bell'},{pose:'bow',dur:1.4,face:Math.PI/2}]; }
+  } else { // kid running wild
+    node=pickN(GRID_NODES,1); jit=.6; if (r(2)<.3) acts=[{pose:'stand',dur:.4+r(3)*1.2}];
+  }
+  const [nx,nz]=at(node), ang=r(9)*Math.PI*2;
+  const end=jit?[nx+Math.cos(ang)*jit*r(8),nz+Math.sin(ang)*jit*r(8)]:[nx,nz];
+  const p={node,acts,end};
+  a.plans.set(k,p); if (a.plans.size>4) a.plans.delete(a.plans.keys().next().value);
+  return p;
+}
+function npcState(a,t){
+  const S=NPC_SLOT[a.kind], k=Math.floor(t/S), tau=t-k*S, prev=npcPlan(a,k-1), cur=npcPlan(a,k);
+  if (a.routeKey!==k){ a.routeKey=k; a.route=route([prev.end,...navPath(prev.node,cur.node),cur.end]); }
+  const R0=a.route, walkT=Math.min(R0.total/a.speed,S*.85);
+  if (tau<walkT){ const [x,z,h]=polyAt(R0.pts,R0.lens,R0.total,R0.total*tau/walkT); return {x,z,h,walking:true,pose:'stand',poseT:0,inc:false,k,actStart:walkT}; }
+  let u=tau-walkT, lastH=polyAt(R0.pts,R0.lens,R0.total,R0.total)[2];
+  for (const act of cur.acts){ if (u<act.dur) return {x:cur.end[0],z:cur.end[1],h:act.face??lastH,walking:false,pose:act.pose,poseT:u,inc:!!act.inc,k}; u-=act.dur; }
+  return {x:cur.end[0],z:cur.end[1],h:lastH,walking:false,pose:'stand',poseT:u,inc:false,k};
+}
+function npcEvents(a,t){
+  const S=NPC_SLOT[a.kind], k=Math.floor(t/S), tau=t-k*S;
+  if (a.evK!==k){ a.evK=k; a.evTau=tau; return; }
+  const cur=npcPlan(a,k), walkT=Math.min((a.route?.total||0)/a.speed,S*.85); let s=walkT;
+  for (const act of cur.acts){ if (act.ev&&s>a.evTau&&s<=tau){ if (act.ev==='burst') urnBurst(); else if (act.ev==='bell') ringBell(false); } s+=act.dur; }
+  a.evTau=tau;
+}
+
 class Agent{
-  constructor(kind,look,name){ this.kind=kind; this.P=buildPerson(look); scene.add(this.P.root);
+  constructor(kind,look,name){ this.kind=kind; this.idx=agents.length; this.P=buildPerson(look); scene.add(this.P.root); this.col=new THREE.Color(look.top||'#888888');
     this.pos=new THREE.Vector3(); this.heading=0; this.speed=kind==='kid'?R(2.8,3.6):kind==='monk'?R(.8,1):R(1,1.35);
-    this.cur={}; this.phase=rnd()*6; this.walk=0; this.queue=[]; this.path=[]; this.pose='stand'; this.poseT=0; this.active=true; this.wpT=0; this.chatCool=R(0,10);
-    this.name=name; this.label=name?makeLabel(name,kind==='monk'?'monk':''):null; this.cushion=null; this.chase=null; this.incenseT=0; this.chatting=false; }
+    this.cur={}; this.phase=rnd()*6; this.walk=0; this.pose='stand'; this.poseT=0; this.active=true; this.chatCool=R(0,10); this.plans=new Map(); this.snap=true;
+    this.name=name; this.label=name?makeLabel(name,kind==='monk'?'monk':''):null; this.chatting=false; }
   place(x,z){ this.pos.set(x,groundY(x,z),z); }
-  goto(x,z){ this.path.push(new THREE.Vector2(x,z)); }
-  reset(){ this.path=[]; this.queue=[]; if (this.cushion){ this.cushion.busy=null; this.cushion=null; } this.incenseT=0; }
+  reset(){ this.plans.clear(); this.routeKey=null; this.snap=true; }
   update(dt){
+    this.chatCool-=dt;
     if (!this.active) return;
-    this.chatCool-=dt; let moving=false;
-    if (this.chatting){ this.heading=angLerp(this.heading,Math.atan2(me.pos.x-this.pos.x,me.pos.z-this.pos.z),1-Math.exp(-dt*6)); }
+    const t=WORLD_CLOCK.now();
+    let s;
+    if (this.preacher) s={x:9,z:-8.7,h:0,walking:false,pose:'preach',poseT:t%60,inc:false};
+    else if (this.calm&&this.parent){ const p=this.parent, ps=p.lastState||{x:p.pos.x,z:p.pos.z,h:p.heading,walking:false,pose:'stand',poseT:0};
+      const ox=Math.cos(ps.h)*.8+Math.sin(ps.h)*.4, oz=-Math.sin(ps.h)*.8+Math.cos(ps.h)*.4;
+      s={x:ps.x+ox,z:ps.z+oz,h:ps.h,walking:ps.walking,pose:ps.walking?'stand':(['kneel','prostrate'].includes(ps.pose)?'kneel':ps.pose==='bow'?'bow':ps.pose==='sit'?'sit':'pray'),poseT:ps.poseT,inc:false}; }
+    else { s=npcState(this,t); npcEvents(this,t); }
+    this.lastState=s;
+    if (this.chatting){ this.heading=angLerp(this.heading,Math.atan2(me.pos.x-this.pos.x,me.pos.z-this.pos.z),1-Math.exp(-dt*6)); this.walk=lerp(this.walk,0,1-Math.exp(-dt*8)); }
     else {
-      if (this.chase&&this.chase.active){ this.path=[new THREE.Vector2(this.chase.pos.x,this.chase.pos.z)]; this.chaseT-=dt; if (this.chaseT<0) this.chase=null; }
-      if (this.path.length){ const w=this.path[0], dx=w.x-this.pos.x, dz=w.y-this.pos.z, d=Math.hypot(dx,dz); this.wpT+=dt;
-        if (d<.25){ this.path.shift(); this.wpT=0; }
-        else if (this.wpT>16){ this.reset(); this.wpT=0; }
-        else { let want=Math.atan2(dx,dz); const step=this.speed*dt, gy=groundY(this.pos.x,this.pos.z);
-          for (const off of [0,.6,-.6,1.2,-1.2,1.9,-1.9]){ const a=want+off, nx=this.pos.x+Math.sin(a)*.5, nz=this.pos.z+Math.cos(a)*.5;
-            if (!blocked(nx,nz,.25) && Math.abs(groundY(nx,nz)-gy)<.45){ want=a; break; } }
-          this.heading=angLerp(this.heading,want,1-Math.exp(-dt*8)); this.pos.x+=Math.sin(this.heading)*step; this.pos.z+=Math.cos(this.heading)*step; moving=true; }
-        this.pose='stand';
-      } else if (this.queue.length){ const q=this.queue[0]; if (q.face!==undefined) this.heading=angLerp(this.heading,q.face,1-Math.exp(-dt*5));
-        this.pose=q.pose; q.dur-=dt; this.poseT+=dt; if (q.fn&&!q.done){ q.fn(this); q.done=true; } if (q.dur<=0){ this.queue.shift(); this.poseT=0; } }
-      else { this.pose='stand'; BRAIN[this.kind](this); }
+      const k=this.snap?1:1-Math.exp(-dt*9); this.snap=false;
+      this.pos.x=lerp(this.pos.x,s.x,k); this.pos.z=lerp(this.pos.z,s.z,k);
+      this.heading=angLerp(this.heading,s.h,k===1?1:1-Math.exp(-dt*8));
+      this.walk=lerp(this.walk,s.walking?1:0,1-Math.exp(-dt*8));
+      this.pose=s.pose; this.poseT=s.poseT;
     }
-    this.walk=lerp(this.walk,moving?1:0,1-Math.exp(-dt*8)); this.phase+=dt*this.speed*4.2*(moving?1:0);
+    this.phase+=dt*this.speed*4.2*(this.walk>.5?1:0);
     this.pos.y=lerp(this.pos.y,groundY(this.pos.x,this.pos.z),1-Math.exp(-dt*12));
     this.P.root.position.copy(this.pos); this.P.root.rotation.y=this.heading;
-    applyPose(this.P,this.cur,this.walk,this.phase,dt,this.pose,this.poseT);
-    if (this.incenseT>0){ this.incenseT-=dt; this.P.inc.visible=true; if (rnd()<dt*3){ const v=new THREE.Vector3(); this.P.inc.getWorldPosition(v); emit(v.x,v.y+.5,v.z,1,.04,.25); } } else this.P.inc.visible=false;
+    applyPose(this.P,this.cur,this.walk,this.phase,dt,this.walk>.5?'stand':this.pose,this.poseT);
+    const inc=!this.chatting&&s.inc;
+    this.P.inc.visible=inc; if (inc&&rnd()<dt*3){ const v=new THREE.Vector3(); this.P.inc.getWorldPosition(v); emit(v.x,v.y+.5,v.z,1,.04,.25); }
   }
 }
-function hallVisit(a,b,spot,onArrive){
-  const front=b.pd/2, pts=[[0,front+b.run+.9],[0,front-.5]];
-  const dx=b.doorXs.reduce((p,c)=>Math.abs(c-spot[0])<Math.abs(p-spot[0])?c:p,b.doorXs[0]);
-  pts.push([dx,b.fz+.8],[dx,b.fz-.9],spot);
-  for (const [lx,lz] of pts){ const [wx,wz]=l2w(b,lx,lz); a.goto(wx,wz); }
-  onArrive(b.rot+Math.PI);
-  a.queue.push({pose:'stand',dur:.1,fn:s=>{ for (const [lx,lz] of pts.slice(0,-1).reverse()){ const [wx,wz]=l2w(b,lx,lz); s.goto(wx,wz); } }});
-}
-const BRAIN={
-  visitor(a){ const r=rnd();
-    if (r<.24){ const ang=rnd()*6.28, x=URN.x+Math.cos(ang)*2.1, z=URN.z+Math.sin(ang)*2.1, f=Math.atan2(URN.x-x,URN.z-z); a.goto(x,z);
-      a.queue.push({pose:'stand',dur:.6,face:f,fn:s=>{ s.incenseT=9; noteIncense(); }}); a.queue.push({pose:'pray',dur:5,face:f});
-      for (let i=0;i<3;i++){ a.queue.push({pose:'bow',dur:.9}); a.queue.push({pose:'pray',dur:.7}); }
-      a.queue.push({pose:'stand',dur:.5,fn:s=>{ s.incenseT=0; urnBurst(); }}); }
-    else if (r<.48){ const c=CUSHIONS.find(c=>!c.busy&&rnd()<.4)||CUSHIONS.find(c=>!c.busy); if (!c) return BRAIN.wander(a);
-      c.busy=a; a.cushion=c; const [lx,lz]=w2l(MAINHALL,c.x,c.z);
-      hallVisit(a,MAINHALL,[lx,lz+.15],face=>{ a.queue.push({pose:'pray',dur:1.5,face}); a.queue.push({pose:'kneel',dur:3,face}); a.queue.push({pose:'prostrate',dur:R(6,10),face}); a.queue.push({pose:'kneel',dur:3,face}); a.queue.push({pose:'stand',dur:.4,fn:s=>{ c.busy=null; s.cushion=null; }}); }); }
-    else if (r<.68){ const b=pick(BUILDINGS.slice(1,5)); hallVisit(a,b,b.spot(),face=>{ a.queue.push({pose:'pray',dur:R(3,5),face}); a.queue.push({pose:'bow',dur:1.2,face}); a.queue.push({pose:rnd()<.5?'kneel':'pray',dur:R(4,7),face}); }); }
-    else if (r<.77){ const [x,z]=freeSpot(7.5,12,-5.4,-3.6); a.goto(x,z); a.queue.push({pose:'sit',dur:R(14,24),face:Math.atan2(9-x,-8.8-z)}); }
-    else if (r<.84){ a.goto(R(9.5,14.5),R(5.6,6)); a.queue.push({pose:'stand',dur:R(4,8),face:0}); }
-    else BRAIN.wander(a); },
-  wander(a){ const [x,z]=freeSpot(-26,26,-5,20); a.goto(x,z); a.queue.push({pose:rnd()<.3?'pray':'stand',dur:R(2,6)}); },
-  monk(a){ if (a.preacher){ a.queue.push({pose:'preach',dur:6,face:0}); return; } const r=rnd();
-    if (r<.42){ const [x,z]=freeSpot(-24,24,-5,18); a.goto(x,z); a.queue.push({pose:'pray',dur:R(3,6)}); }
-    else if (r<.8){ const b=pick(BUILDINGS.slice(0,5)); hallVisit(a,b,b===MAINHALL?[R(-2,2),-.6]:b.spot(),face=>{ a.queue.push({pose:'pray',dur:R(5,9),face}); a.queue.push({pose:'bow',dur:1.3,face}); }); }
-    else { a.goto(BELLPOS.x-2.4,BELLPOS.z+.3); a.queue.push({pose:'pray',dur:2,face:Math.PI/2}); a.queue.push({pose:'stand',dur:1,fn:()=>ringBell(false)}); a.queue.push({pose:'bow',dur:1.4}); } },
-  kid(a){ if (a.calm){ const p=a.parent; if (p){ a.goto(p.pos.x+.8,p.pos.z+.6); a.queue.push({pose:['kneel','prostrate'].includes(p.pose)?'kneel':p.pose==='bow'?'bow':'pray',dur:1.5}); } return; }
-    const others=agents.filter(o=>o.kind==='kid'&&o!==a&&o.active&&!o.calm);
-    if (others.length&&rnd()<.35){ a.chase=pick(others); a.chaseT=R(3,6); return; }
-    const [x,z]=freeSpot(-26,26,-4,20); a.goto(x,z); if (rnd()<.3) a.queue.push({pose:'stand',dur:R(.4,1.6)}); },
-};
 
 const VNAMES=['An','Minh','Tuấn','Lan','Hoa','Bảo','Thảo','Long','Mai','Phúc','Hạnh','Dũng','Ngọc','Vy','Hùng','Trang','Quân','Linh','Sơn','Yến'];
 const AODAI=['#b8322a','#3a5fa8','#efe8da','#d9a43a','#7b5aa6','#2f8a76','#d46a8a'];
@@ -931,17 +1007,32 @@ const PREACHER=agents[1];
 for (let i=0;i<30;i++){ const a=new Agent('visitor',visitorLook(),i<VNAMES.length?VNAMES[i]:null); const [x,z]=freeSpot(-25,25,-4,20); a.place(x,z); a.heading=rnd()*6; agents.push(a); }
 const KIDLOOK=()=>({fit:'modern',h:R(1,1.2),kid:true,skin:pick(skins),hair:pick(hairs),top:pick(['#f2b134','#e2523d','#4c9be0','#5cbf79','#f08fb0']),bottom:pick(['#2d3e5e','#e9e4d8','#3a3a3a']),shortSleeve:true,style:'short',shoe:'#f2efe8'});
 ['Bin','Na','Tí','Bông','Su'].forEach((n,i)=>{ const a=new Agent('kid',KIDLOOK(),n); const [x,z]=freeSpot(-20,20,0,18); a.place(x,z); if (i===4){ a.calm=true; a.speed=1.2; a.parent=agents[8]; } agents.push(a); });
-const DOG=(()=>{ const D=buildDog(pick(['#c99a5b','#d8b07a'])); scene.add(D.root); return {D,pos:V3(0,0,48),heading:Math.PI,state:'away',t:R(6,14),target:null,phase:0,happy:0}; })();
+const DOG=(()=>{ const D=buildDog(pick(['#c99a5b','#d8b07a'])); scene.add(D.root); return {D,pos:V3(0,0,44),heading:Math.PI,phase:0,happy:0,snap:true,lastBarkK:-1}; })();
+const DOG_SLOT=110;
+function dogState(t){
+  const k=Math.floor(t/DOG_SLOT), tau=t-k*DOG_SLOT, r=n=>h32(WORLD_CLOCK.seed+4243,k,n), pickG=n=>GRID_NODES[Math.floor(r(n)*GRID_NODES.length)%GRID_NODES.length];
+  const A=pickG(1), B=pickG(2), legs=[[DOG_GATE,A,2.4],[A,B,2.0]], lie=16+r(3)*8;
+  let tt=tau-12;
+  if (tt<0) return {away:true};
+  for (const [f,to,sp] of legs){ const rt=route(navPath(f,to)), d=rt.total/sp; if (tt<d){ const [x,z,h]=polyAt(rt.pts,rt.lens,rt.total,tt*sp); return {x,z,h,moving:true,k}; } tt-=d; }
+  const [bx,bz]=NAV.pts[B];
+  if (tt<lie) return {x:bx,z:bz,h:r(4)*6.28,lie:true,k,barkAt:tt<.05};
+  tt-=lie;
+  const back=route(navPath(B,DOG_GATE)), d=back.total/2.2;
+  if (tt<d){ const [x,z,h]=polyAt(back.pts,back.lens,back.total,tt*2.2); return {x,z,h,moving:true,k}; }
+  return {away:true};
+}
 function updateDog(dt,t){
-  const d=DOG; d.t-=dt; d.happy-=dt; let moving=false;
-  const goTo=(x,z,spd)=>{ const dx=x-d.pos.x, dz=z-d.pos.z; if (Math.hypot(dx,dz)<.3) return true; d.heading=angLerp(d.heading,Math.atan2(dx,dz),1-Math.exp(-dt*6)); d.pos.x+=Math.sin(d.heading)*spd*dt; d.pos.z+=Math.cos(d.heading)*spd*dt; moving=true; return false; };
+  const d=DOG, D=d.D; d.happy-=dt;
+  const s=dogState(WORLD_CLOCK.now());
+  if (s.away){ D.root.visible=false; d.snap=true; return; }
+  D.root.visible=true;
   if (d.happy>0){ d.heading=angLerp(d.heading,Math.atan2(me.pos.x-d.pos.x,me.pos.z-d.pos.z),1-Math.exp(-dt*5)); }
-  else if (d.state==='away'){ d.D.root.visible=false; if (d.t<0){ d.state='enter'; d.pos.set(R(-2,2),0,40); d.D.root.visible=true; d.target=[R(-14,14),R(4,16)]; } }
-  else if (d.state==='enter'||d.state==='wander'){ if (goTo(d.target[0],d.target[1],2.4)){ if (rnd()<.35){ d.state='lie'; d.t=R(10,18); } else { d.state='wander'; d.target=freeSpot(-22,22,-4,18); if (rnd()<.3) bark(d.pos); } } if (d.state==='wander'&&rnd()<dt*.04) d.state='leave'; }
-  else if (d.state==='lie'){ if (d.t<0) d.state='leave'; }
-  else if (d.state==='leave'){ if (goTo(0,44,2.2)){ d.state='away'; d.t=R(35,70); } }
+  else { const k=d.snap?1:1-Math.exp(-dt*9); d.snap=false; d.pos.x=lerp(d.pos.x,s.x,k); d.pos.z=lerp(d.pos.z,s.z,k); d.heading=angLerp(d.heading,s.h,k===1?1:1-Math.exp(-dt*7)); }
+  if (s.lie&&d.lastBarkK!==s.k){ d.lastBarkK=s.k; if (h32(WORLD_CLOCK.seed,s.k,77)<.5) bark(d.pos); }
+  const moving=!!s.moving&&d.happy<=0, lie=!!s.lie&&d.happy<=0;
   d.phase+=dt*(moving?11:0);
-  const D=d.D, lie=d.state==='lie'&&d.happy<=0; D.root.position.copy(d.pos); D.root.rotation.y=d.heading;
+  D.root.position.copy(d.pos); D.root.rotation.y=d.heading;
   D.body.position.y=lerp(D.body.position.y||.46,lie?.2:.46,1-Math.exp(-dt*5));
   D.legs.forEach((l,i)=>{ l.rotation.x=lie?(i<2?-1.4:1.4):Math.sin(d.phase+(i%2?Math.PI:0)+(i>1?Math.PI/2:0))*.6*(moving?1:0); });
   D.tail.rotation.y=Math.sin(t*(d.happy>0?16:lie?2:9))*.5;
@@ -1125,7 +1216,7 @@ function startChat(m){ chat={m,t:Math.round(R(4,7)),total:0,line:pick(MONK_LINES
 /* ================= resize ================= */
 function resize(){ const w=innerWidth, h=innerHeight; renderer.setSize(w,h); rt.setSize(Math.max(1,Math.ceil(w/PIX)),Math.max(1,Math.ceil(h/PIX)));
   postMat.uniforms.uRes.value.set(rt.width,rt.height); camera.aspect=w/h; camera.updateProjectionMatrix();
-  const sc=rt.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))); smokeMat.uniforms.uScale.value=sc; ffMat.uniforms.uScale.value=sc; }
+  const sc=rt.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))); smokeMat.uniforms.uScale.value=sc; ffMat.uniforms.uScale.value=sc; farMat.uniforms.uScale.value=sc; }
 addEventListener('resize',resize);
 
 
@@ -1189,9 +1280,9 @@ function lookToBuild(look){
 }
 function addRemote(p){
   if (remotes.has(p.id)) return;
-  const P=buildPerson(lookToBuild(p.look)); scene.add(P.root);
+  const LK=lookToBuild(p.look), P=buildPerson(LK); scene.add(P.root);
   const label=makeLabel(p.name,'remote'+(MUTED.has(p.name)?' muted':'')); label.addEventListener('click',()=>openPlayerMenu(p.id));
-  remotes.set(p.id,{id:p.id,P,cur:{},phase:0,walk:0,label,bubble:makeBubble(),bubbleT:0,name:p.name,pos:V3(p.x,groundY(p.x,p.z),p.z),heading:0,pose:'stand',poseT:0,lastX:p.x,lastZ:p.z,incenseT:0});
+  remotes.set(p.id,{id:p.id,P,col:new THREE.Color(LK.top),cur:{},phase:0,walk:0,label,bubble:makeBubble(),bubbleT:0,name:p.name,pos:V3(p.x,groundY(p.x,p.z),p.z),heading:0,pose:'stand',poseT:0,lastX:p.x,lastZ:p.z,incenseT:0});
 }
 function removeRemote(id){ const r=remotes.get(id); if (!r) return; scene.remove(r.P.root); r.label.remove(); r.bubble.remove(); remotes.delete(id); }
 const myBubble=makeBubble('me'); let myBubbleT=0;
@@ -1200,10 +1291,12 @@ const net=new Net({
     const el=$('#liveStatus');
     if (!CFG.realtime){ el.hidden=true; return; }
     el.hidden=false; el.textContent=s==='live'?tr('live',{n:liveHere||1}):s==='connecting'?tr('connecting'):tr('alone');
-    $('#inviteBtn').hidden=s!=='live';
-    if (s!=='live') for (const id of [...remotes.keys()]) removeRemote(id);
+    $('#inviteBtn').hidden=s!=='live'; requestAnimationFrame(layoutHud);
+    if (s!=='live'){ for (const id of [...remotes.keys()]) removeRemote(id); if (WORLD_CLOCK.seed!==9101){ WORLD_CLOCK.seed=9101; for (const a of agents) a.reset(); DOG.snap=true; } }
   },
-  welcome(m){ for (const p of m.players) addRemote(p); liveHere=m.players.length+1; setOnline(m.online); if (m.name&&m.name!==me.name){ me.name=m.name; if (me.label) me.label.textContent=m.name; } },
+  welcome(m){ { const b=insideOf(me.pos.x,me.pos.z); if (b) setTimeout(()=>net.send({t:'room',h:BUILDINGS.indexOf(b)}),0); }
+    WORLD_CLOCK.seed=(m.seed%1000000)|0; for (const a of agents) a.reset(); DOG.snap=true;
+    for (const p of m.players) addRemote(p); liveHere=m.players.length+1; setOnline(m.online); if (m.name&&m.name!==me.name){ me.name=m.name; if (me.label) me.label.textContent=m.name; } },
   join(p){ addRemote(p); },
   leave(id){ removeRemote(id); },
   chat(m){
@@ -1256,6 +1349,27 @@ function featuresLabels(place,lh,dt){
   if (myBubbleT>0&&mode!=='pov') place(myBubble,me.pos,lh(me)+.55,99); else myBubble.hidden=true;
   const nearStand=me.entered&&me.pos.distanceTo(CANDLE_POS)<7;
   candleLabels.forEach((el,i)=>{ const c=CANDLES[i]; if (!nearStand||!c){ el.hidden=true; return; } el.textContent=c.name; place(el,CANDLE_SLOTS[i],(SIZE_H[c.size]||.22)+.25,12); });
+}
+
+// ---- distant people as one-piece silhouettes (one draw call for the whole far crowd) ----
+const FAR_MAX=400, farPos=new Float32Array(FAR_MAX*3), farCol=new Float32Array(FAR_MAX*3);
+const farGeo=new THREE.BufferGeometry();
+farGeo.setAttribute('position',new THREE.BufferAttribute(farPos,3).setUsage(THREE.DynamicDrawUsage));
+farGeo.setAttribute('color',new THREE.BufferAttribute(farCol,3).setUsage(THREE.DynamicDrawUsage));
+const silTex=canvasTex(32,64,(g)=>{ g.fillStyle='#fff'; g.beginPath(); g.arc(16,9,6.5,0,7); g.fill(); g.beginPath(); g.moveTo(9,17); g.lineTo(23,17); g.lineTo(27,60); g.lineTo(5,60); g.closePath(); g.fill(); },false);
+const farMat=new THREE.ShaderMaterial({ uniforms:{uMap:{value:silTex},uScale:{value:300}},
+  vertexShader:`attribute vec3 color; varying vec3 vC; uniform float uScale; void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=min(1.75*uScale/-mv.z,96.); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader:`uniform sampler2D uMap; varying vec3 vC; void main(){ vec2 uv=vec2((gl_PointCoord.x-.25)*2.,1.-gl_PointCoord.y); if(uv.x<0.||uv.x>1.) discard; if(texture2D(uMap,uv).a<.5) discard; gl_FragColor=vec4(vC*.8,1.); }` });
+const farCrowd=new THREE.Points(farGeo,farMat); farCrowd.frustumCulled=false; scene.add(farCrowd);
+let FAR_D=36;
+function updateLOD(){
+  FAR_D=QUALITY.noShadows?24:36;
+  let n=0;
+  const push=(pos,col,h)=>{ if (n>=FAR_MAX) return; farPos[n*3]=pos.x; farPos[n*3+1]=pos.y+h*.5; farPos[n*3+2]=pos.z; farCol[n*3]=col.r; farCol[n*3+1]=col.g; farCol[n*3+2]=col.b; n++; };
+  const far=(pos)=>mode!=='pov'&&camera.position.distanceTo(pos)>FAR_D;
+  for (const a of agents){ if (!a.active){ a.P.root.visible=false; continue; } const f=far(a.pos); a.P.root.visible=!f; if (f) push(a.pos,a.col,a.P.h); }
+  for (const r of remotes.values()){ const rr=net.remote.get(r.id); if (!rr||!rr.visible) continue; const f=far(r.pos); r.P.root.visible=!f; if (f) push(r.pos,r.col,r.P.h); }
+  farGeo.setDrawRange(0,n); farGeo.attributes.position.needsUpdate=true; farGeo.attributes.color.needsUpdate=true;
 }
 
 // ---- chat ----
@@ -1421,7 +1535,7 @@ function refreshLangDynamic(){
   if (me.entered) $('#hello').textContent=tr('welcome',{name:me.name});
   $('#soundBtn').textContent=tr(AC&&!muted?'soundOn':'soundOff');
   $('#moveHelp').textContent=tr(IS_TOUCH?'moveHelpTouch':'moveHelp');
-  renderBless(); net.h.status(net.state);
+  renderBless(); net.h.status(net.state); layoutHud();
 }
 $('#langSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if (!b) return; setLang(b.dataset.v); refreshLangDynamic(); });
 
@@ -1456,14 +1570,17 @@ async function startSession(name){
 function afterEnter(){
   track('visit');
   if (IS_TOUCH){ joyEl.hidden=false; $('#legendBox').open=false; }
-  refreshLangDynamic();
+  refreshLangDynamic(); layoutHud(); setTimeout(layoutHud,300);
   if (CFG.realtime) net.start({name:me.name,token:me.token,look:{outfit:me.outfit,color:me.color},invite:INVITE});
 }
+function layoutHud(){ const h=document.querySelector('header.tl').getBoundingClientRect().bottom; document.documentElement.style.setProperty('--hdr',Math.round(h)+'px'); }
+addEventListener('resize',layoutHud);
 function initFeatures(){
+  layoutHud(); setTimeout(layoutHud,600);
   applyStatic(); refreshLangDynamic(); applyQuality(); loadCandles(); loadWishes();
   setInterval(loadCandles,60000); setInterval(loadWishes,120000); setInterval(()=>net.ping(),15000);
   // ?debug exposes a few handles for automated browser tests
-  if (new URLSearchParams(location.search).has('debug')) window.__temple={me,act,net,remotes,BUILDINGS,setHour,CANDLE_POS,WISH_POS,FORTUNE_POS,openHalls};
+  if (new URLSearchParams(location.search).has('debug')) window.__temple={me,act,net,remotes,BUILDINGS,setHour,CANDLE_POS,WISH_POS,FORTUNE_POS,openHalls,agents,npcState,dogState,clockNow:()=>WORLD_CLOCK.now(),farCount:()=>farGeo.drawRange.count,renderInfo:()=>{ renderer.info.autoReset=false; renderer.info.reset(); renderer.setRenderTarget(rt); renderer.render(scene,camera); renderer.setRenderTarget(null); const i=renderer.info; const r={calls:i.render.calls,triangles:i.render.triangles,geometries:i.memory.geometries,textures:i.memory.textures,programs:i.programs.length}; renderer.info.autoReset=true; return r; },enterPOV};
 }
 
 /* ================= main loop ================= */
@@ -1517,6 +1634,7 @@ function frame(){
     me.heading=angLerp(me.heading,Math.atan2(m.pos.x-me.pos.x,m.pos.z-me.pos.z),1-Math.exp(-dt*6));
     me.pose=chat.total<1.4?'bow':'pray'; m.pose=chat.total<1.2?'bow':'pray'; me.walk=lerp(me.walk,0,.2);
     if (chat.t<=0){ m.chatting=false; m.chatCool=35; award(2,'Trò chuyện với '+m.name.split(' ').slice(-2).join(' '),'monk_chat'); me.pose='stand'; chat=null; } }
+  if (inside!==lastInside&&me.entered){ net.send({t:'room',h:inside?BUILDINGS.indexOf(inside):-1}); }
   if (inside!==lastInside){ if (inside&&mode==='third'){ enterPOV(); me.autoPOV=true; } if (!inside&&me.autoPOV){ exitPOV(); me.autoPOV=false; }
     if (inside){ toast(tr('hallEnter',{hall:inside.title,deity:DEITY_NAMES[inside.deity]}),4); inside.prayed=false; if (!BLESS.seen.includes(inside.title)){ BLESS.seen.push(inside.title); award(5,'Viếng '+inside.title,'hall_visit'); if (BLESS.seen.length===BUILDINGS.length) showReward(`${GIFT_SVG}<span>${tr('allHalls')}</span>`,true); } } lastInside=inside; }
   me.pos.y=lerp(me.pos.y,groundY(me.pos.x,me.pos.z),1-Math.exp(-dt*14));
@@ -1526,7 +1644,7 @@ function frame(){
 
   for (const a of agents) a.update(dt);
   updateDog(dt,T);
-  updateRemotes(dt); updateCandles(T); updateBellSchedule(dt,inside); updateFortuneCup(T,dt); watchFps();
+  updateRemotes(dt); updateLOD(); updateCandles(T); updateBellSchedule(dt,inside); updateFortuneCup(T,dt); watchFps();
 
   bellCooldown-=dt; bellSwing*=Math.exp(-dt*.7); bellPivot.rotation.z=Math.sin(T*2.6)*.09*bellSwing;
   idleBellT-=dt; if (idleBellT<0){ idleBellT=R(40,70); ringBell(false); }

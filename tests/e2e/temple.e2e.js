@@ -25,7 +25,7 @@ const BASE=process.env.BASE||'http://127.0.0.1:8800/';
   out('A sees Minh pose: '+await A.evaluate(()=>[...window.__temple.remotes.values()][0]?.pose));
   // chat
   await A.bringToFront(); await A.keyboard.press('Enter'); await A.fill('#chatInput','A Di Đà Phật, chào bạn'); await A.keyboard.press('Enter');
-  await B.waitForTimeout(1200);
+  await B.waitForFunction(()=>[...window.__temple.remotes.values()].some(r=>r.bubble.textContent),null,{timeout:8000,polling:250}).catch(()=>{});
   out('B bubble: '+await B.evaluate(()=>[...window.__temple.remotes.values()][0]?.bubble.textContent));
   await B.screenshot({path:'/tmp/e2e_live.png'});
   // candle: walk A to the stand, order, simulate payment

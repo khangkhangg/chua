@@ -153,3 +153,15 @@ details.tr .ctl{max-height:calc(100vh - 120px);overflow-y:auto}
 
 body.rm #reward.go{animation:fade 2.2s linear forwards}
 @keyframes fade{0%,80%{opacity:1}100%{opacity:0}}
+
+/* phones: keep the settings button and messages below the header, whatever its height */
+#legendBox summary::after{content:"＋";float:right;color:var(--gold);font:600 16px/1 var(--f-ui);margin-top:4px}
+#legendBox[open] summary::after{content:"－"}
+@media (max-width:720px){
+  .tl .sub{display:none}
+  .tl{padding:10px 12px}
+  body.entered details.tr{top:calc(var(--hdr,150px) + 8px)}
+  #toast{top:calc(var(--hdr,140px) + 8px)}
+  body.entered #toast{top:calc(var(--hdr,140px) + 52px)}
+  #bag{top:calc(var(--hdr,150px) + 8px)}
+}

@@ -7,6 +7,8 @@ final class Player
 {
     public int $id = 0;
     public string $shard = '';
+    /** '' in the courtyard, or 'h<hall>#<n>' for room n of a hall */
+    public string $room = '';
     public float $x = 0.0;
     public float $z = 30.0;
     public int $h = 128;

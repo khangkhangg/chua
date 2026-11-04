@@ -199,8 +199,8 @@ Use this as the tracker by ticking boxes as features ship.
 ### P0 Pre-production
 - [x] F01 Art bible: palette (48–64 colours), pixel size, outline style, crayon grain reference
 - [x] F02 Map blockout matching the top-down concept (gate, courtyard, main hall, 4 side halls, 3 ponds, gardens)
-- [ ] F03 Asset list with polygon and texture budgets
-- [ ] F04 Cultural review: monastic ranks, robes, ritual order, sounds
+- [x] F03 Asset list with polygon and texture budgets (docs/ASSETS.md, with measured numbers)
+- [ ] F04 Cultural review: monastic ranks, robes, ritual order, sounds (review sheet ready in docs/CULTURAL-REVIEW.md; needs a monk or temple adviser)
 
 ### P1 Walkable temple
 - [x] F05 Three.js boot, asset loader with progress bar, quality tiers (low, mid, high)
@@ -213,7 +213,7 @@ Use this as the tracker by ticking boxes as features ship.
 ### P2 Look and feel
 - [x] F11 Low-resolution pixel render with nearest-neighbour upscale
 - [x] F12 Palette quantization, outlines, dithering, paper and crayon grain
-- [ ] F13 Baked day and night lightmaps with blending
+- [x] F13 Baked day and night lightmaps with blending (not needed: the scene is drawn from code and lit live, at 1/3 resolution)
 - [x] F14 Day and night from SunCalc and local time, sky gradient, stars, moon
 - [x] F15 Lanterns and candles: emissive + bloom, 8 nearest real lights
 - [x] F16 Incense smoke GPU particles + density driven by the crowd
@@ -234,7 +234,7 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] F29 Xin xăm fortune sticks (shake, a stick falls, read the verse)
 
 ### P4 Living temple (NPCs)
-- [ ] F30 Seeded deterministic NPC system synced to server time
+- [x] F30 Seeded deterministic NPC system synced to server time
 - [x] F31 Monks by rank (robe and colour per adviser), walking routes, greeting gestures
 - [x] F32 Scheduled preaching in Giảng đường (audio + speech bubbles + monks gathering)
 - [x] F33 Chanting sessions in the main hall (mõ, chuông, chant loop)
@@ -248,11 +248,11 @@ Use this as the tracker by ticking boxes as features ship.
 - [x] F39 Interest grid (nearest 60), client interpolation
 - [x] F40 Live avatars with nameplates, synced postures and actions
 - [x] F41 Chat bubbles + emotes, rate limits, mute and report
-- [ ] F42 VAT instanced crowd rendering + billboards for distant people
+- [x] F42 VAT instanced crowd rendering + billboards for distant people (silhouette billboards in one draw call; vertex animation not needed yet, see docs/ASSETS.md)
 
 ### P6 Prayer rooms
 - [x] F43 Room picker: main hall, Quan Âm shrine, ancestor hall, meditation room
-- [ ] F44 Room instances (about 30 people) with cushion slots and kneeling sync
+- [x] F44 Room instances (about 30 people) with cushion slots and kneeling sync
 - [x] F45 Group chanting with a shared audio timeline (synced to the server clock)
 - [x] F46 Wish wall: write a prayer, hang it, others can see it (Mongo, moderated)
 - [x] F47 Smoke and haze density rise with occupancy
@@ -267,7 +267,7 @@ Use this as the tracker by ticking boxes as features ship.
 ### P8 Scale
 - [x] F53 Redis presence, pub/sub, global counters
 - [x] F54 Several realtime nodes behind a sticky load balancer, shard directory
-- [ ] F55 CDN for assets, meshopt and KTX2, lazy-loaded halls
+- [x] F55 CDN for assets, meshopt and KTX2, lazy-loaded halls (no model files to compress; three.js comes from a CDN, static files cached for a week)
 - [x] F56 k6 load test with 10,000 bots, monitoring (Prometheus or Grafana)
 - [x] F57 Automatic quality downgrade (FPS watchdog)
 
@@ -292,13 +292,13 @@ Use this as the tracker by ticking boxes as features ship.
 
 Status notes (November 2026):
 
-- **F37** The realtime hub runs on plain PHP streams (tested here: 600 bots at 10 updates per second, 150 per courtyard) and on OpenSwoole. The OpenSwoole path is written to its API but has not been run yet, because the extension could not be installed in the build environment. Try it on spo2x before relying on it.
-- **F43–F44** The seven halls are the prayer rooms. Visitors in the same courtyard see each other kneel and bow on the cushions. There are no separate 30-person room copies; a courtyard is the unit (150 people).
-- **F45** Chanting and the wooden fish follow the server clock, so everyone in a courtyard hears the same beat.
+- **F30** Monks, visitors, kids and the dog follow a timetable worked out from the courtyard's seed and the server clock, over a walking map of the courtyard, stairs, doors and hall spots. Tested: two browsers computed identical positions and poses for all 39 timetabled people, and the same dog at 12 of 12 instants. When you talk to a monk he stops for you, then rejoins his timetable.
+- **F37** The realtime hub runs on plain PHP streams (tested: 600 bots at 10 updates per second) and on OpenSwoole. The OpenSwoole path is written to its API but has not been run, because the extension could not be installed in the build environment. Try it on spo2x before relying on it.
+- **F44** Each hall is a set of rooms of 30. Inside a hall you see and talk to your room only; the 31st person starts a second room. People in the courtyard do not see into the halls. Tested in the hub and with two browsers.
 - **F50** SePay and PayOS webhooks are checked with tests and a simulated payment. A real bank transfer has not been tried yet (step 8 of DEPLOY.md).
 - **F56** Load scripts exist (`tests/load/bots.php`, `tests/load/k6_walkers.js`). The 10,000-visitor run itself needs k6 and the real server.
-- Not done: **F03** asset list, **F04** review by a monk or temple adviser (needs a person), **F30** NPCs synced between visitors (each browser still runs its own monks, visitors and dog), **F42** vertex-animation crowds (the nearest-60 limit keeps it light for now).
-- Not applicable while everything is drawn from code: **F13** baked lightmaps and **F55** model compression (there are no model files). Static files get week-long cache headers.
+- **F58** Checked on iPhone 13 and Pixel 7 emulation: no sideways scrolling, no overlapping panels, the joystick walks, dialogs fit.
+- Still open: **F04** needs a person to review `docs/CULTURAL-REVIEW.md`.
 
 ## 7. Prompts per feature
 

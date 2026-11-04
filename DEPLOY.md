@@ -24,7 +24,7 @@ git checkout main && git pull
 php tests/run.php
 ```
 
-**Verify:** `65 passed, 0 failed` (needs a local `chua_test` database; see README).
+**Verify:** `71 passed, 0 failed` (needs a local `chua_test` database; see README).
 
 ## 1. Pre-flight on spo2x (read-only)
 
