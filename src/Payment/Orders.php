@@ -115,7 +115,7 @@ final class Orders
             }
             throw $e;
         }
-        Bus::fromConfig()->publish('candle', ['name' => $order['name'], 'size' => $order['size']]);
+        \Chua\Events::publish('candle', ['name' => $order['name'], 'size' => $order['size']]);
         return 'paid';
     }
 
