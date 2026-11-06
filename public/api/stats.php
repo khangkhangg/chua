@@ -14,7 +14,7 @@ $st = $pdo->prepare('SELECT COUNT(*) FROM candles WHERE expires_at > ?');
 $st->execute([Db::now()]);
 header('Cache-Control: max-age=10');
 Http::json([
-    'online' => Bus::fromConfig()->onlineTotal(),
+    'online' => Bus::fromConfig()->onlineTotal() ?? (chua_config()['realtime']['enabled'] && (chua_config()['realtime']['mode'] ?? 'ws') === 'poll' ? Chua\Realtime\PollHub::online(microtime(true)) : null),
     'incense_today' => (int) ($today['incense'] ?? 0),
     'visits_today' => (int) ($today['visit'] ?? 0),
     'candles_active' => (int) $st->fetchColumn(),

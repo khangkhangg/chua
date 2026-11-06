@@ -243,5 +243,73 @@ check('courtyard does not see into halls', count($v[$outside->id]) === 0);
 $rs->enterRoom($people[0], -1, 30);
 check('leaving a hall returns to the courtyard', $people[0]->room === '');
 
+// ---------- live visitors by polling (shared hosting) ----------
+use Chua\Realtime\PollHub;
+foreach (['live_presence', 'live_events', 'reports', 'rate_limits'] as $t) {
+    $pdo->exec("DELETE FROM $t");
+}
+$ja = PollHub::join(['name' => 'Linh', 'look' => ['outfit' => 'aodai', 'color' => '#B8322A']], 'ipa');
+check('poll join welcome', ($ja['t'] ?? '') === 'welcome' && strlen($ja['sid']) === 32 && $ja['players'] === []);
+$jb = PollHub::join(['name' => 'An', 'invite' => $ja['shard']], 'ipb');
+check('poll invite joins same courtyard', $jb['shard'] === $ja['shard'] && count($jb['players']) === 1 && $jb['players'][0]['look']['color'] === '#b8322a');
+check('poll seed follows courtyard', $jb['seed'] === $ja['seed']);
+check('poll bad name refused', (PollHub::join(['name' => 'đụ quá'], 'ipc')['code'] ?? '') === 'name');
+$sa = PollHub::sync(['sid' => $ja['sid'], 'x' => 1, 'z' => 5, 'h' => 10, 'pose' => 3, 'since' => $ja['since']]);
+$sb = PollHub::sync(['sid' => $jb['sid'], 'x' => 2, 'z' => 5, 'h' => 20, 'pose' => 0, 'since' => $jb['since'],
+    'out' => [['t' => 'chat', 'text' => 'Chúc bình an lồn'], ['t' => 'act', 'a' => 'bell'], ['t' => 'act', 'a' => 'dance']]]);
+check('poll sees neighbour with pose', ($sb['players'][0][0] ?? 0) === $ja['id'] && $sb['players'][0][4] === 3);
+check('poll counts', $sb['here'] === 2 && $sb['online'] >= 2);
+$sa2 = PollHub::sync(['sid' => $ja['sid'], 'x' => 1, 'z' => 5, 'since' => $sa['since']]);
+$types = array_map(static fn ($e) => $e['type'] . ':' . ($e['data']['text'] ?? $e['data']['a'] ?? ''), $sa2['events']);
+check('poll chat masked and delivered', in_array('chat:Chúc bình an ***', $types, true));
+check('poll bell delivered, unknown action dropped', in_array('act:bell', $types, true) && !in_array('act:dance', $types, true));
+$sb2 = PollHub::sync(['sid' => $jb['sid'], 'x' => 2, 'z' => 5, 'since' => $sb['since'], 'out' => [['t' => 'chat', 'text' => 'again']]]);
+check('poll chat flood slowed', ($sb2['errors'][0]['code'] ?? '') === 'slow');
+$sb3 = PollHub::sync(['sid' => $jb['sid'], 'x' => 40, 'z' => 60, 'since' => $sb2['since']]);
+PollHub::sync(['sid' => $ja['sid'], 'x' => 1, 'z' => 5, 'since' => 0, 'out' => [['t' => 'chat', 'text' => 'xa quá']]]);
+$sb4 = PollHub::sync(['sid' => $jb['sid'], 'x' => 40, 'z' => 60, 'since' => $sb3['since']]);
+check('poll chat stays within 30 m', !array_filter($sb4['events'], static fn ($e) => $e['type'] === 'chat'));
+check('poll view radius respected', $sb4['players'] === []);
+$ra = PollHub::sync(['sid' => $ja['sid'], 'x' => 0, 'z' => -14, 'since' => 0, 'out' => [['t' => 'room', 'h' => 0]]]);
+$rb = PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -6, 'since' => 0]);
+check('poll hall room set', $ra['room'] === 'h0#1');
+check('poll courtyard does not see into the hall', $rb['players'] === []);
+$rb2 = PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -14, 'since' => 0, 'out' => [['t' => 'room', 'h' => 0], ['t' => 'report', 'id' => $ja['id'], 'reason' => 'test']]]);
+$rb3 = PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -14, 'since' => 0]);
+check('poll same room sees each other', ($rb3['players'][0][0] ?? 0) === $ja['id']);
+check('poll report stored', $rb2['reported'] === true && (int) $pdo->query("SELECT COUNT(*) FROM reports WHERE reported = 'Linh'")->fetchColumn() === 1);
+check('poll unknown visitor told to rejoin', (PollHub::sync(['sid' => str_repeat('0', 32)])['code'] ?? '') === 'gone');
+$pdo->prepare('UPDATE live_presence SET updated_at = updated_at - 30 WHERE sid = ?')->execute([$ja['sid']]);
+check('poll stale visitor disappears', PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -14, 'since' => 0])['players'] === []);
+PollHub::leave($jb['sid']);
+check('poll leave removes', (PollHub::sync(['sid' => $jb['sid']])['code'] ?? '') === 'gone');
+for ($i = 0; $i < 6; $i++) {
+    PollHub::join(['name' => 'Same' . chr(65 + $i)], 'same-net');
+}
+check('poll per-network limit', (PollHub::join(['name' => 'SameG'], 'same-net')['code'] ?? '') === 'too_many');
+
+// ---------- first-run setup ----------
+use Chua\Setup;
+check('setup local db only', Setup::localHost('localhost') && Setup::localHost('127.0.0.1') && !Setup::localHost('db.evil.example'));
+[$vals, $errs] = Setup::fromForm(['hosting' => 'shared', 'db_host' => 'localhost', 'db_name' => 'chua_test', 'db_user' => 'chua', 'db_pass' => 'x', 'admin_pass' => 'long-enough-pw', 'admin_pass2' => 'long-enough-pw'], 'chua.example.com');
+check('setup shared means polling', !$errs && $vals['realtime']['mode'] === 'poll' && $vals['redis']['enabled'] === false && $vals['base_url'] === 'https://chua.example.com');
+check('setup admin hash works', password_verify('long-enough-pw', $vals['admin']['password_hash']) && strlen($vals['secret']) === 64);
+[$vv] = Setup::fromForm(['hosting' => 'vps', 'redis' => '1', 'db_name' => 'd', 'db_user' => 'u', 'admin_pass' => 'long-enough-pw', 'admin_pass2' => 'long-enough-pw'], 'chua.example.com');
+check('setup vps means websocket', $vv['realtime']['mode'] === 'ws' && $vv['realtime']['public_url'] === 'wss://chua.example.com/ws' && $vv['redis']['enabled'] === true);
+[, $e2] = Setup::fromForm(['db_host' => 'db.evil.example', 'db_name' => 'd', 'db_user' => 'u', 'admin_pass' => 'short', 'admin_pass2' => 'other'], 'x');
+check('setup refuses remote db and weak password', count($e2) === 3);
+[, $e3] = Setup::fromForm(['db_name' => 'd', 'db_user' => 'u', 'admin_pass' => 'long-enough-pw', 'admin_pass2' => 'long-enough-pw', 'pay_on' => '1', 'pay_bin' => '12'], 'x');
+check('setup checks bank BIN', count($e3) === 1);
+$tmp = tempnam(sys_get_temp_dir(), 'cfg');
+file_put_contents($tmp, Setup::renderConfig($vals));
+$loaded = require $tmp;
+unlink($tmp);
+check('setup config file loads back', $loaded === $vals);
+$conn = Setup::connect(Setup::dsn('127.0.0.1', 0, 'chua_test'), 'chua', getenv('CHUA_TEST_DB_PASS') ?: 'devpass');
+check('setup connects', $conn['ok'] === true);
+check('setup schema installs twice', Setup::installSchema($conn['pdo']) === ['001_schema.sql', '002_live.sql'] && Setup::installSchema($conn['pdo']) === ['001_schema.sql', '002_live.sql']);
+check('setup wrong password explained', str_contains(Setup::connect(Setup::dsn('127.0.0.1', 0, 'chua_test'), 'chua', 'wrong')['error'] ?? '', 'refused'));
+check('setup locked while config exists', Setup::needed() === false && Setup::writeConfig('x') === false);
+
 printf("%d passed, %d failed\n", $passed, $failed);
 exit($failed ? 1 : 0);

@@ -10,6 +10,9 @@ $rt = chua_config()['realtime'];
 if (!$rt['enabled']) {
     Http::json(['enabled' => false]);
 }
+if (($rt['mode'] ?? 'ws') === 'poll') {
+    Http::json(['enabled' => true, 'mode' => 'poll', 'poll' => (int) $rt['poll_ms']]);
+}
 $invite = preg_match('/^s[a-f0-9]{6}$/', (string) ($_GET['invite'] ?? '')) ? (string) $_GET['invite'] : '';
 $bus = Bus::fromConfig();
 $nodes = $bus->nodes();

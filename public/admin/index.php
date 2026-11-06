@@ -109,6 +109,9 @@ button{cursor:pointer}
     $pendingWishes = (int) $pdo->query("SELECT COUNT(*) FROM wishes WHERE status = 'pending'")->fetchColumn();
     $today = $pdo->query("SELECT COUNT(*) n, COALESCE(SUM(amount),0) s FROM candle_orders WHERE status='paid' AND paid_at >= UTC_DATE()")->fetch();
     $online = Bus::fromConfig()->onlineTotal();
+    if ($online === null && $config['realtime']['enabled'] && ($config['realtime']['mode'] ?? 'ws') === 'poll') {
+        try { $online = Chua\Realtime\PollHub::online(microtime(true)); } catch (\Throwable) { $online = null; }
+    }
     $events = $pdo->query('SELECT day, type, count FROM events_daily WHERE day >= DATE_SUB(UTC_DATE(), INTERVAL 13 DAY) ORDER BY day DESC, type')->fetchAll();
     $types = array_values(array_unique(array_column($events, 'type')));
     $byDay = [];

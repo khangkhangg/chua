@@ -21,7 +21,7 @@ const BASE=process.env.BASE||'http://127.0.0.1:8800/';
   out('B sees remotes: '+await B.evaluate(()=>[...window.__temple.remotes.values()].map(r=>r.name).join(',')));
   out('A status: '+await A.textContent('#liveStatus')+' | here '+await A.textContent('#here'));
   // B kneels; A should see the pose
-  await B.bringToFront(); await B.evaluate(()=>window.__temple.act('Digit4')); await A.waitForTimeout(1500);
+  await B.bringToFront(); await B.evaluate(()=>window.__temple.act('Digit4')); await A.waitForTimeout(3500);
   out('A sees Minh pose: '+await A.evaluate(()=>[...window.__temple.remotes.values()][0]?.pose));
   // chat
   await A.bringToFront(); await A.keyboard.press('Enter'); await A.fill('#chatInput','A Di Đà Phật, chào bạn'); await A.keyboard.press('Enter');
@@ -57,6 +57,8 @@ const BASE=process.env.BASE||'http://127.0.0.1:8800/';
   // language
   await A.click('#langSeg button[data-v="vi"]'); out('vi title: '+await A.textContent('#settings summary'));
   // report Minh from A
+  await A.bringToFront(); await A.evaluate(()=>{ window.__temple.me.pos.set(3,0,40); });
+  await A.waitForFunction(()=>window.__temple.remotes.size>0,null,{timeout:15000,polling:250});
   const rid=await A.evaluate(()=>[...window.__temple.remotes.keys()][0]); await A.evaluate((id)=>{ window.__temple.remotes.get(id).label.click(); },rid);
   await A.fill('#pmWhy','test report'); await A.click('#pmReport'); await A.waitForTimeout(800);
   // leave

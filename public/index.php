@@ -2,6 +2,12 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/src/bootstrap.php';
 
+// A fresh install goes to the setup page first.
+if (Chua\Setup::needed()) {
+    header('Location: setup.php');
+    exit;
+}
+
 $config = chua_config();
 $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 $pay = $config['payments'];
