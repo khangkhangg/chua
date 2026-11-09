@@ -4,7 +4,7 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteRule ^\.git - [F,L]
-  RewriteRule ^(src|sql|tests|realtime|docs|vendor)(/|$) - [F,L]
+  RewriteRule ^(src|sql|tests|realtime|docs|deploy|vendor)(/|$) - [F,L]
   RewriteRule ^(config(\.local)?(\.example)?\.php|.*\.md|\.gitignore)$ - [F,L]
   RewriteCond %{REQUEST_URI} !^/public/
   RewriteRule ^(.*)$ public/$1 [L]

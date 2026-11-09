@@ -8,6 +8,7 @@ Upload it and open the site: a **setup page** runs on the first visit, asks whet
 
 - **Shared hosting** (Hostinger, cPanel): no background service; pages check in about once a second. About 50 to 150 people at once. Step by step: `HOSTINGER.md`.
 - **VPS**: a realtime server with 10 updates a second, about 1,000 people per server and more with OpenSwoole or extra servers. Step by step: `DEPLOY.md`.
+- **Raspberry Pi** (staging, at home): the same live server as a VPS, published through a Cloudflare Tunnel, so no open ports. One command: `deploy/pi/README.md`.
 
 ## Run it locally
 
@@ -75,4 +76,5 @@ tests/                     PHP tests and load tests
 docs/PLAN.md               plan and feature checklist
 DEPLOY.md                  deploy runbook for a VPS
 HOSTINGER.md               deploy guide for shared hosting
+deploy/pi/                 one-command install on a Raspberry Pi with a Cloudflare Tunnel
 ```
