@@ -10,14 +10,45 @@ const LOOK = {
   diatang: { pose: 'standing', robe: ['#d64434', '#7a1b14'], skin: SKIN, bald: true, trim: '#f0c454', arms: 'staff', kasaya: true },
   dilac: { pose: 'laughing', robe: ['#f7a541', '#c15f17'], skin: SKIN, bald: true, smile: true },
   dansanh: { pose: 'baby', robe: ['#e2553a', '#93281a'], skin: ['#fde39a', '#d9a245'], hair: BLUE_HAIR, trim: '#f0c454' },
+  adida_s: { pose: 'seated', robe: ['#e2603a', '#8f2a14'], skin: SKIN, hair: BLUE_HAIR, trim: '#e9b949' },
+  // Hộ Pháp: Khuyến Thiện (calm, white face, sword) and Trừng Ác (red face, mace).
+  hophap1: { pose: 'guardian', robe: ['#3f7a4a', '#1f4a2a'], skin: ['#f6e6cf', '#d8b58e'], weapon: 'sword' },
+  hophap2: { pose: 'guardian', robe: ['#b8302a', '#701812'], skin: ['#de6a52', '#9a3020'], weapon: 'mace' },
 };
-const SIZE = { seated: 112, standing: 190, laughing: 112, baby: 150 };   // height in units; width is always 100
+const SIZE = { seated: 112, standing: 190, laughing: 112, baby: 150, guardian: 190 };   // height in units; width is always 100
 
-export function paintDeity(name) {
-  const o = LOOK[name], W = 512, cv = document.createElement('canvas');
+export const paintDeity = name => paintFigure(LOOK[name]);
+export function paintFigure(o, W = 512) {
+  const cv = document.createElement('canvas');
   cv.width = W; cv.height = Math.round(W * SIZE[o.pose] / 100);
   const c = cv.getContext('2d'); c.scale(W / 100, W / 100); c.lineJoin = c.lineCap = 'round';
-  ({ seated, standing, laughing, baby })[o.pose](c, o);
+  ({ seated, standing, laughing, baby, guardian })[o.pose](c, o);
+  return cv;
+}
+
+// The eighteen La Hán: seated monks, each with his own robe, face and object, so no two look alike.
+const ARHAT_ROBES = [['#f2a640', '#b8601a'], ['#c9503a', '#7f2414'], ['#8a6a3e', '#4e3820'], ['#d9b65a', '#94701e'], ['#a0563a', '#5e2a16'], ['#e07b39', '#9a4316']];
+const ARHAT_SKIN = [['#f6d7ad', '#c9905a'], ['#e8c08e', '#a8703e'], ['#d9a878', '#94603a']];
+const ARHAT_ATTR = ['bowl', 'beads', 'scroll', 'pagoda', 'fan', 'staff', 'beads', 'bowl', 'none'];
+export const arhatLook = i => ({ pose: 'seated', bald: true, robe: ARHAT_ROBES[i % 6], skin: ARHAT_SKIN[(i * 7) % 3],
+  trim: ARHAT_ROBES[(i + 3) % 6][1], attr: ARHAT_ATTR[i % 9], longBrows: i % 3 !== 1, beard: i % 4 === 0 });
+
+// Thousand-Buddha wall: rows of small gilded Buddhas in arched niches on a lacquer-red ground.
+export function paintMural(cols = 18, rows = 6) {
+  const W = 1024, H = 400, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), cw = W / cols, ch = H / rows;
+  c.fillStyle = lin(c, 0, 0, 0, H, '#7a1c12', '#4a0e08'); c.fillRect(0, 0, W, H);
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const x = i * cw + cw / 2, y = j * ch, r = cw * .2;
+    c.beginPath(); c.moveTo(x - cw * .4, y + ch * .95); c.lineTo(x - cw * .4, y + ch * .35); c.arc(x, y + ch * .35, cw * .4, Math.PI, 0); c.lineTo(x + cw * .4, y + ch * .95); c.closePath();
+    c.fillStyle = '#2c0804'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#c9963a'; c.stroke();
+    c.fillStyle = 'rgba(255,214,120,.35)'; c.beginPath(); c.arc(x, y + ch * .36, r * 1.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = lin(c, x - r, 0, x + r, 0, '#b8801f', '#f6d478', '#b8801f');
+    c.beginPath(); c.ellipse(x, y + ch * .86, r * 1.6, r * .5, 0, 0, Math.PI * 2); c.fill();   // lap
+    c.beginPath(); c.moveTo(x - r * .8, y + ch * .84); c.quadraticCurveTo(x - r * .9, y + ch * .52, x, y + ch * .5); c.quadraticCurveTo(x + r * .9, y + ch * .52, x + r * .8, y + ch * .84); c.fill();
+    c.beginPath(); c.arc(x, y + ch * .42, r * .55, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(x, y + ch * .33, r * .28, 0, Math.PI * 2); c.fill();
+  }
   return cv;
 }
 
@@ -50,7 +81,13 @@ function head(c, x, y, r, o) {
   if (o.veil) shape(c, lin(c, x - r * 1.8, 0, x + r * 1.8, 0, o.robe[1], o.robe[0], o.robe[1]), () => { c.moveTo(x, y - r * 1.6); c.bezierCurveTo(x + r * 1.55, y - r * 1.55, x + r * 1.45, y + r * .6, x + r * 1.8, y + r * 2.9); c.lineTo(x - r * 1.8, y + r * 2.9); c.bezierCurveTo(x - r * 1.45, y + r * .6, x - r * 1.55, y - r * 1.55, x, y - r * 1.6); });
   for (const s of [-1, 1]) shape(c, face, () => { c.moveTo(x + s * r * .9, y - r * .3); c.bezierCurveTo(x + s * r * 1.32, y - r * .42, x + s * r * 1.34, y + r * .45, x + s * r * 1.16, y + r * 1.05); c.bezierCurveTo(x + s * r * 1.1, y + r * 1.3, x + s * r * .92, y + r * 1.2, x + s * r * .93, y + r * .75); });   // long earlobes
   shape(c, face, () => { c.moveTo(x - r, y - r * .15); c.bezierCurveTo(x - r * 1.02, y - r * 1.32, x + r * 1.02, y - r * 1.32, x + r, y - r * .15); c.bezierCurveTo(x + r, y + r * .65, x + r * .5, y + r * 1.18, x, y + r * 1.22); c.bezierCurveTo(x - r * .5, y + r * 1.18, x - r, y + r * .65, x - r, y - r * .15); });
-  if (o.bald) lines(c, 'rgba(255,255,255,.4)', r * .12, [[x - r * .55, y - r * .78, x - r * .15, y - r * 1.02, x + r * .2, y - r * .96]]);   // shine on the shaved head
+  if (o.helmet) {
+    shape(c, lin(c, 0, y - r * 2.7, 0, y - r * 1.4, '#e8402a', '#8a1810'), () => { c.moveTo(x, y - r * 1.4); c.bezierCurveTo(x - r * .9, y - r * 2.2, x - r * .2, y - r * 2.8, x + r * .5, y - r * 2.6); c.bezierCurveTo(x, y - r * 2.3, x + r * .3, y - r * 1.8, x, y - r * 1.4); });   // plume
+    const hg = lin(c, x - r * 1.2, 0, x + r * 1.2, 0, '#b07a1c', '#f6d478', '#b07a1c');
+    for (const s of [-1, 1]) shape(c, hg, () => { c.moveTo(x + s * r * 1.08, y - r * .4); c.lineTo(x + s * r * 1.5, y + r * .25); c.lineTo(x + s * r * 1.02, y + r * .4); });   // cheek guards
+    shape(c, hg, () => { c.moveTo(x - r * 1.14, y - r * .32); c.bezierCurveTo(x - r * 1.22, y - r * 1.75, x + r * 1.22, y - r * 1.75, x + r * 1.14, y - r * .32); c.quadraticCurveTo(x, y - r * .64, x - r * 1.14, y - r * .32); });
+    oval(c, '#c8322a', x, y - r * .98, r * .18, r * .22, 0, .4);
+  } else if (o.bald) lines(c, 'rgba(255,255,255,.4)', r * .12, [[x - r * .55, y - r * .78, x - r * .15, y - r * 1.02, x + r * .2, y - r * .96]]);   // shine on the shaved head
   else if (o.veil) {
     shape(c, '#2c2a35', () => { c.moveTo(x - r * 1.02, y - r * .2); c.bezierCurveTo(x - r * 1.05, y - r * 1.25, x + r * 1.05, y - r * 1.25, x + r * 1.02, y - r * .2); c.bezierCurveTo(x + r * .6, y - r * .5, x - r * .6, y - r * .5, x - r * 1.02, y - r * .2); }, .4);
     shape(c, lin(c, x - r * 1.2, 0, x + r * 1.2, 0, o.robe[1], o.robe[0], o.robe[1]), () => { c.moveTo(x - r * 1.1, y - r * .05); c.bezierCurveTo(x - r * 1.15, y - r * 1.6, x + r * 1.15, y - r * 1.6, x + r * 1.1, y - r * .05); c.bezierCurveTo(x + r * 1.0, y - r * .95, x - r * 1.0, y - r * .95, x - r * 1.1, y - r * .05); });
@@ -73,6 +110,14 @@ function curls(c, x, y, r, h) {
 }
 function features(c, x, y, r, o) {
   const d = o.skin[1];
+  if (o.fierce) {   // guardian: thick angry brows, open eyes, beard
+    lines(c, LINE, r * .15, [[x - r * .82, y - r * .36, x - r * .45, y - r * .34, x - r * .12, y - r * .1], [x + r * .82, y - r * .36, x + r * .45, y - r * .34, x + r * .12, y - r * .1]]);
+    for (const s of [-1, 1]) { oval(c, '#fffaf0', x + s * r * .42, y + r * .06, r * .21, r * .12, 0, r * .04); oval(c, '#1a120c', x + s * r * .4, y + r * .07, r * .08, r * .08, 0, 0); }
+    lines(c, d, r * .07, [[x - r * .04, y - r * .1, x - r * .16, y + r * .3, x - r * .14, y + r * .46], [x - r * .24, y + r * .5, x, y + r * .62, x + r * .24, y + r * .5]]);
+    shape(c, '#2a1a12', () => { c.moveTo(x - r * .62, y + r * .58); c.quadraticCurveTo(x, y + r * .48, x + r * .62, y + r * .58); c.quadraticCurveTo(x + r * .45, y + r * 1.55, x, y + r * 1.8); c.quadraticCurveTo(x - r * .45, y + r * 1.55, x - r * .62, y + r * .58); }, r * .04);
+    oval(c, '#7a1a12', x, y + r * .78, r * .2, r * .1, 0, 0);
+    return;
+  }
   lines(c, LINE, r * .07, [[x - r * .78, y - r * .12, x - r * .46, y - r * .36, x - r * .14, y - r * .2], [x + r * .78, y - r * .12, x + r * .46, y - r * .36, x + r * .14, y - r * .2]]);   // brows
   const eye = o.smile ? -.1 : .24;   // closed eyes: curved down in calm, up when laughing
   lines(c, LINE, r * .08, [[x - r * .66, y + r * .08, x - r * .42, y + r * eye, x - r * .16, y + r * .08], [x + r * .66, y + r * .08, x + r * .42, y + r * eye, x + r * .16, y + r * .08]]);
@@ -86,7 +131,9 @@ function features(c, x, y, r, o) {
     lines(c, '#8a3518', r * .04, [[x - r * .28, y + r * .8, x, y + r * .84, x + r * .28, y + r * .8]]);
     for (const s of [-1, 1]) oval(c, 'rgba(230,120,90,.16)', x + s * r * .55, y + r * .45, r * .25, r * .16, 0, 0);
   }
-  oval(c, '#9a4a18', x, y - r * .3, r * .07, r * .07, 0, 0);   // urna
+  if (o.beard) shape(c, '#efe9df', () => { c.moveTo(x - r * .5, y + r * .9); c.quadraticCurveTo(x, y + r * 1.05, x + r * .5, y + r * .9); c.quadraticCurveTo(x + r * .35, y + r * 1.7, x, y + r * 1.95); c.quadraticCurveTo(x - r * .35, y + r * 1.7, x - r * .5, y + r * .9); }, r * .04);   // an old monk's white beard
+  if (o.longBrows) lines(c, '#efe9df', r * .1, [[x - r * .2, y - r * .26, x - r * .8, y - r * .4, x - r * 1.25, y + r * .35], [x + r * .2, y - r * .26, x + r * .8, y - r * .4, x + r * 1.25, y + r * .35]]);   // long white brows
+  if (!o.bald) oval(c, '#9a4a18', x, y - r * .3, r * .07, r * .07, 0, 0);   // urna
 }
 
 /* ---------- seated, in meditation (Thích Ca) or holding the medicine bowl (Dược Sư) ---------- */
@@ -105,9 +152,26 @@ function seated(c, o) {
   lines(c, R[1], .5, [[62, 46, 58, 58, 56, 70], [68, 48, 66, 62, 64, 78], [74, 54, 74, 68, 70, 82], [40, 68, 48, 74, 58, 80], [36, 74, 46, 79, 54, 84]]);
   shape(c, lin(c, 0, 80, 0, 89, S[0], S[1]), () => c.ellipse(50, 84.5, 12, 4.2, 0, 0, Math.PI * 2));   // hands resting in the lap
   lines(c, S[1], .4, [[41, 84, 45, 82.5, 49, 84], [51, 84, 55, 82.5, 59, 84], [44, 86.5, 50, 87.5, 56, 86.5]]);
-  if (o.bowl) {
+  const attr = o.bowl ? 'bowl' : o.attr;
+  if (attr === 'bowl') {
     shape(c, lin(c, 0, 74, 0, 85, '#6c9be0', '#1d3f86'), () => { c.moveTo(39, 78); c.bezierCurveTo(40, 87, 60, 87, 61, 78); });
     oval(c, '#a9c8f2', 50, 78, 11, 2.4, 0, .5);
+  } else if (attr === 'beads') {
+    for (let i = 0; i <= 14; i++) { const t = i / 14 * Math.PI; oval(c, '#6a2e10', 50 - Math.cos(t) * 13, 84 + Math.sin(t) * 6, 1.3, 1.3, 0, .2); }
+  } else if (attr === 'scroll') {
+    shape(c, lin(c, 0, 74, 0, 84, '#fbf3dc', '#d8c69c'), () => c.roundRect(41, 74, 18, 9, 1.5), .5);
+    for (const x of [41, 59]) oval(c, '#8a5a24', x, 78.5, 1.4, 5, 0, .4);
+    lines(c, '#8a6a3a', .35, [[45, 77, 50, 77, 55, 77], [45, 80, 50, 80, 55, 80]]);
+  } else if (attr === 'pagoda') {
+    const g = lin(c, 44, 0, 56, 0, '#b8801f', '#f6d478', '#b8801f');
+    for (let k = 0; k < 3; k++) shape(c, g, () => { const y = 82 - k * 4.5, w = 6 - k * 1.4; c.moveTo(50 - w, y); c.lineTo(50 + w, y); c.lineTo(50 + w * .7, y - 3.6); c.lineTo(50 - w * .7, y - 3.6); }, .4);
+    lines(c, '#b8801f', .8, [[50, 68.5, 50, 66.5, 50, 64.5]]);
+  } else if (attr === 'fan') {
+    lines(c, '#6b3410', .9, [[56, 86, 60, 76, 64, 68]]);
+    shape(c, lin(c, 58, 56, 74, 72, '#f3e3b4', '#c9a463'), () => { c.moveTo(64, 68); c.bezierCurveTo(56, 60, 62, 50, 70, 52); c.bezierCurveTo(78, 56, 74, 66, 64, 68); }, .5);   // palm-leaf fan
+  } else if (attr === 'staff') {
+    lines(c, OUT, 2, [[84, 22, 84, 64, 84, 106]]); lines(c, '#e0b54a', 1.3, [[84, 22, 84, 64, 84, 106]]);
+    c.lineWidth = 1.1; c.strokeStyle = '#e8c25a'; c.beginPath(); c.ellipse(84, 19, 4, 5, 0, 0, Math.PI * 2); c.stroke();
   }
   head(c, 50, 25, 9.5, o);
 }
@@ -162,6 +226,38 @@ function laughing(c, o) {
   hand(c, 20, 92, 2.6, S, 'open');
   for (let i = 0; i < 6; i++) oval(c, '#7a3b16', 16 + i * 1.2, 98 + i * 1.4, 1.1, 1.1, 0, .2);   // prayer beads in the hand
   head(c, 50, 26, 11, o);
+}
+
+/* ---------- Hộ Pháp: armoured temple guardian, sword or mace ---------- */
+function guardian(c, o) {
+  const R = o.robe, S = o.skin, gold = lin(c, 26, 0, 74, 0, '#b07a1c', '#f6d478', '#b07a1c');
+  shape(c, lin(c, 12, 0, 88, 0, R[1], R[0], R[1]), () => { c.moveTo(34, 40); c.bezierCurveTo(18, 60, 14, 130, 10, 178); c.lineTo(90, 178); c.bezierCurveTo(86, 130, 82, 60, 66, 40); });   // cloak
+  for (const x of [41, 59]) shape(c, lin(c, x - 6, 0, x + 6, 0, '#3a2a1e', '#140c08'), () => { c.moveTo(x - 5, 150); c.lineTo(x - 6, 180); c.quadraticCurveTo(x, 187, x + 7, 182); c.lineTo(x + 5, 150); });   // boots
+  const skirt = () => { c.moveTo(30, 98); c.lineTo(70, 98); c.lineTo(76, 156); c.quadraticCurveTo(50, 162, 24, 156); };
+  shape(c, gold, skirt);
+  c.save(); c.beginPath(); skirt(); c.closePath(); c.clip(); c.strokeStyle = 'rgba(90,50,10,.7)'; c.lineWidth = .45;
+  for (let y = 102, row = 0; y < 160; y += 5, row++) for (let x = 24 + (row % 2) * 2.5; x < 78; x += 5) { c.beginPath(); c.arc(x, y, 2.6, 0, Math.PI); c.stroke(); }   // scale armour
+  c.restore();
+  shape(c, lin(c, 0, 100, 0, 166, R[0], R[1]), () => { c.moveTo(43, 100); c.lineTo(57, 100); c.lineTo(61, 166); c.lineTo(39, 166); });   // front apron
+  shape(c, gold, () => { c.moveTo(34, 40); c.bezierCurveTo(28, 46, 28, 70, 31, 100); c.lineTo(69, 100); c.bezierCurveTo(72, 70, 72, 46, 66, 40); });   // breastplate
+  oval(c, rad(c, 48, 60, 9, '#fff6d8', '#9fb4c8'), 50, 62, 7.5, 7.5, 0, .6);   // chest mirror
+  lines(c, 'rgba(90,50,10,.6)', .5, [[34, 76, 50, 80, 66, 76], [33, 86, 50, 90, 67, 86]]);
+  shape(c, lin(c, 0, 93, 0, 101, '#c8322a', '#7a1810'), () => c.roundRect(29, 93, 42, 7, 2));
+  oval(c, gold, 50, 96.5, 4, 4, 0, .5);
+  if (o.weapon === 'sword') {   // both hands resting on the pommel of a sword planted in front
+    lines(c, OUT, 4.4, [[50, 104, 50, 140, 50, 176]]); lines(c, lin(c, 47, 0, 53, 0, '#9aa4ae', '#f2f6fa', '#9aa4ae'), 3.4, [[50, 104, 50, 140, 50, 176]]);
+    shape(c, gold, () => c.roundRect(42, 99, 16, 3.4, 1.5), .5);
+    for (const s of [-1, 1]) tube(c, R[0], 7, [50 + s * 17, 48, 50 + s * 16, 72, 50 + s * 4, 90]);
+    hand(c, 47, 92, Math.PI / 2, S, 'fist'); hand(c, 53, 92, -Math.PI / 2, S, 'fist', -1);
+  } else {   // mace raised over the shoulder, other fist on the hip
+    lines(c, OUT, 3.4, [[27, 56, 24, 30, 21, 4]]); lines(c, gold, 2.4, [[27, 56, 24, 30, 21, 4]]);
+    oval(c, gold, 21, 6, 4.5, 6, -.1, .6);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; lines(c, OUT, .7, [[21 + Math.cos(a) * 4.5, 6 + Math.sin(a) * 6, 21 + Math.cos(a) * 5.5, 6 + Math.sin(a) * 7.2, 21 + Math.cos(a) * 6.6, 6 + Math.sin(a) * 8.4]]); }
+    tube(c, R[0], 7, [33, 48, 22, 46, 24, 34]); hand(c, 24, 32, 0, S, 'fist');
+    tube(c, R[0], 7, [67, 48, 76, 70, 66, 92]); hand(c, 64, 92, -2.2, S, 'fist', -1);
+  }
+  for (const s of [-1, 1]) oval(c, gold, 50 + s * 17, 44, 7.5, 5.5, s * .3, .6);   // shoulder guards
+  head(c, 50, 24, 9, { ...o, helmet: true, bald: true, fierce: o.weapon === 'mace' });   // bald: no urna on a guardian
 }
 
 /* ---------- Đản Sanh: the newborn Buddha, right hand to the sky, left hand to the earth ---------- */

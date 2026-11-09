@@ -3,9 +3,9 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/+esm';
 import { mergeGeometries } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/utils/BufferGeometryUtils.js/+esm';
 // ?v must match asset_version in config.php: browsers keep js files for 7 days.
-import { Net, POSES as NET_POSES, headingFromByte } from './net.js?v=0.7.0';
-import { t as tr, setLang, getLang, applyStatic } from './i18n.js?v=0.7.0';
-import { paintDeity } from './painted.js?v=0.7.0';
+import { Net, POSES as NET_POSES, headingFromByte } from './net.js?v=0.8.4';
+import { t as tr, setLang, getLang, applyStatic } from './i18n.js?v=0.8.4';
+import { paintDeity, paintFigure, arhatLook, paintMural } from './painted.js?v=0.8.4';
 const CFG=window.CHUA||{realtime:false,payments:false,testMode:false,sizes:{}};
 
 /* ================= utilities ================= */
@@ -216,10 +216,13 @@ function aureole(g,r,y,z){ for (const [mat,spin,size,dz] of [[MAT.rays,.12,2,0],
 
 const lathe=(pts,mat,y,g,seg=32)=>{ const m=add(new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r,yy])=>new THREE.Vector2(r,yy)),seg),mat),g); m.position.y=y; return m; };
 /* Statues are paintings (painted.js) shown as sprites that always face the visitor, standing on a 3D lotus with the aureole behind. */
+// A painted figure standing on its bottom edge, always turned to the viewer, h metres tall.
+function spriteOf(cv,h){ const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,alphaTest:.5,color:'#f3e9d6'})); sp.center.set(.5,0); sp.scale.set(h*cv.width/cv.height,h,1); return sp; }
 function paintedStatue(name,h,seat,lotus=SM.lotus,base){
   const g=new THREE.Group(), lg=new THREE.Group(); if (base){ base(g); lg.position.y=.3; } g.add(lg);
-  const y0=lg.position.y+lotusSeat(lg,seat,lotus), cv=paintDeity(name), tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,alphaTest:.5,color:'#f3e9d6'})); sp.center.set(.5,0); sp.scale.set(h*cv.width/cv.height,h,1); sp.position.set(0,y0-.06,seat*.9); g.add(sp);   // in front of the petals so the lotus doesn't hide the lap
+  const y0=lg.position.y+lotusSeat(lg,seat,lotus), sp=spriteOf(paintDeity(name),h);
+  sp.position.set(0,y0-.06,seat*.9); g.add(sp);   // in front of the petals so the lotus doesn't hide the lap
   haloPlane(g,h*.3,y0+h*.82,-.25); aureole(g,h*.55,y0+h*.6,-.32);
   g.userData.h=y0+h; return g; }
 const STATUE={
@@ -239,10 +242,10 @@ const interiorLights=[];
 const CUSHIONS=[];
 function lanternMesh(parent,x,y,z,s=1){ sph(.26*s,MAT.lantern,x,y,z,parent,1,1.25,1).castShadow=false; cyl(.12*s,.12*s,.06*s,MAT.gold,x,y+.33*s,z,parent,8); cyl(.12*s,.12*s,.06*s,MAT.gold,x,y-.33*s,z,parent,8); box(.03,.3*s,.03,MAT.col,x,y-.52*s,z,parent); }
 function building(o){
-  const {w,d,platH,colH,roofH,curl,x,z,rot=0,doors=3,tier2=false,stack=0,deity,title,plaque,main=false}=o;
+  const {w,d,platH,colH,roofH,curl,x,z,rot=0,doors=3,tier2=false,stack=0,deity,title,plaque,main=false,doorW,doorH,stairW}=o;
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=rot; scene.add(g);
   const cut=new THREE.Group(); cut.userData.cut=true; g.add(cut);
-  const pw=w+3, pd=d+3, nSteps=Math.max(2,Math.ceil(platH/.22)), stepH=platH/nSteps, run=nSteps*.45, sw=Math.min(8,w*.42);
+  const pw=w+3, pd=d+3, nSteps=Math.max(2,Math.ceil(platH/.22)), stepH=platH/nSteps, run=nSteps*.45, sw=stairW||Math.min(8,w*.42);
   const b={x,z,rot,g,cut,platH,pw,pd,sw,run,title,deity};
   box(pw+.3,.3,pd+.3,MAT.stoneDark,0,.15,0,g);
   box(pw,platH-.12,pd,MAT.stone,0,(platH-.12)/2,0,g);
@@ -259,7 +262,7 @@ function building(o){
   const fl=add(new THREE.Mesh(new THREE.PlaneGeometry(iw-.4,idp-.4),MAT.floor),g,false,true); fl.rotation.x=-Math.PI/2; fl.position.set(0,platH+.012,wz);
   box(iw,colH,t,MAT.wall,0,platH+colH/2,bz+t/2,g);
   for (const sx of [-1,1]) box(t,colH,idp,MAT.wall,sx*(iw/2-t/2),platH+colH/2,wz,g);
-  const dw=main?2.3:1.9, dh=Math.min(colH*.72,3.2);
+  const dw=doorW||(main?2.3:1.9), dh=doorH||Math.min(colH*.72,3.2);
   const doorXs=doors===3?[-iw*.3,0,iw*.3]:[0]; b.doorXs=doorXs;
   const xs=[-iw/2]; for (const dx of doorXs) xs.push(dx-dw/2,dx+dw/2); xs.push(iw/2);
   for (let i=0;i<xs.length;i+=2){ const x0=xs[i], x1=xs[i+1]; if (x1-x0>.05){ box(x1-x0,colH,t,MAT.wall,(x0+x1)/2,platH+colH/2,fz-t/2,g); obLocal(b,x0,x1,fz-t,fz); } }
@@ -269,7 +272,8 @@ function building(o){
     for (const sx of [-1,1]){ box(.15,dh,t+.12,MAT.col,dx+sx*(dw/2+.06),platH+dh/2,fz-t/2,g); box(dw/2-.05,dh-.1,.07,MAT.doorLeaf,dx+sx*(dw*.75+.15),platH+dh/2,fz+.05,g); box(dw/2-.35,dh*.3,.08,MAT.gold,dx+sx*(dw*.75+.15),platH+dh*.7,fz+.06,g); }
     box(dw,.08,t+.1,MAT.col,dx,platH+.04,fz-t/2,g);
   }
-  for (const dx of doorXs){ const L=Math.hypot(dh,idp*.75), sh=new THREE.Mesh(new THREE.PlaneGeometry(dw*.95,L),MAT.shaft); sh.position.set(dx,platH+dh/2,fz-idp*.375); sh.rotation.x=Math.atan2(idp*.75,dh); add(sh,g,false,false); }
+  const reach=Math.min(idp,10)*.75;   // sunlight falls a few metres in, however deep the hall
+  for (const dx of doorXs){ const L=Math.hypot(dh,reach), sh=new THREE.Mesh(new THREE.PlaneGeometry(dw*.95,L),MAT.shaft); sh.position.set(dx,platH+dh/2,fz-reach/2); sh.rotation.x=Math.atan2(reach,dh); add(sh,g,false,false); }
   const panelXs=doors===3?[-iw*.45,-iw*.15,iw*.15,iw*.45]:[-iw*.32,iw*.32];
   for (const px of panelXs){ box(.85,colH*.62,.06,MAT.gold,px,platH+colH*.46,fz+.03,g); box(.55,colH*.5,.07,MAT.col,px,platH+colH*.46,fz+.04,g); }
   box(iw-.4,.5,.06,MAT.goldDark,0,top-.45,fz+.03,g);
@@ -282,7 +286,7 @@ function building(o){
   for (const sx of [-1,1]) for (const k of [-.25,.25]) win(sx*iw/2,wz+idp*k,sx*Math.PI/2);
   for (const k of [-.3,.3]) win(iw*k,bz,Math.PI);
   const colZ=(fz+pd/2)/2-.2, n=Math.max(3,Math.round(w/3.4));
-  for (let i=0;i<=n;i++){ const cx=-w/2+.6+i*(w-1.2)/n;
+  for (let i=0;i<=n;i++){ const cx=-w/2+.6+i*(w-1.2)/n; if (doorXs.some(dx=>Math.abs(cx-dx)<dw/2+.6)) continue;   // keep doorways clear
     box(.6,.28,.6,MAT.stone,cx,platH+.14,colZ,g); cyl(.2,.23,colH-.28,MAT.col,cx,platH+.28+(colH-.28)/2,colZ,g,10); box(.52,.22,.52,MAT.gold,cx,top-.11,colZ,g);
     if (i>0&&i<n) box(.26,colH*.55,.05,MAT.gold,cx,platH+colH*.5,colZ+.22,g);
     const [wx,wzz]=l2w(b,cx,colZ); obCirc(wx,wzz,.3);
@@ -310,6 +314,7 @@ function building(o){
   box(aw,1.0,2,MAT.col,0,platH+.5,az,g); box(aw+.12,.1,2.12,MAT.gold,0,platH+1.03,az,g); box(aw+.04,.12,.04,MAT.gold,0,platH+.6,az+1.0,g);
   if (!standing){ box(aw*.7,.62,1.5,MAT.col,0,platH+1.39,az-.15,g); box(aw*.72,.1,1.55,MAT.gold,0,platH+1.72,az-.15,g); }
   const st=STATUE[deity](); const k=(colH-altarTop-.35)/st.userData.h; st.scale.setScalar(k); st.position.set(0,platH+altarTop,az-.2); g.add(st);
+  if (o.extra) o.extra(g,{b,platH,iw,bz,fz,colH,altarTop,az});
   const tz=az+1.68, ty=platH+.86;
   box(aw*.76,.84,.76,MAT.col,0,platH+.42,tz,g); box(aw*.78,.06,.8,MAT.gold,0,ty-.01,tz,g);
   for (const sx of [-1,1]){
@@ -341,8 +346,8 @@ function building(o){
 
 /* ================= terrain: the temple sits on a mountain terrace ================= */
 function terrainH(x,z){ const ax=Math.abs(x), n=fbm(x*.011+3,z*.011+7);
-  const north=smooth(-44,-115,z), side=smooth(70,135,ax), south=smooth(72,125,z);
-  let h=north*((-z-44)*.62+n*40)+side*((ax-70)*.42+n*34);
+  const north=smooth(-104,-175,z), side=smooth(70,135,ax), south=smooth(72,125,z);   // flat to z -104 for the great hall
+  let h=north*((-z-104)*.62+n*40)+side*((ax-70)*.42+n*34);
   h+=(north+side)*Math.pow(fbm(x*.028+11,z*.028),3)*55;
   h-=south*(1-side)*(28+n*8);
   h+=smooth(210,330,z)*(80+n*70);
@@ -376,18 +381,34 @@ const outPath=add(new THREE.Mesh(new THREE.PlaneGeometry(9,46),MAT.brick),WORLD,
 const sideMat=lam('#ffffff',{map:slabTex.clone()}); sideMat.map.repeat.set(1,10); sideMat.map.needsUpdate=true;
 for (const sx of [-1,1]){ const p=add(new THREE.Mesh(new THREE.PlaneGeometry(3,50),sideMat),WORLD,false,true); p.rotation.x=-Math.PI/2; p.position.set(sx*34,.03,3); }
 function wallSeg(x0,x1,z0,z1){ const w=Math.max(.5,x1-x0), d=Math.max(.5,z1-z0); box(w,1,d,MAT.wall,(x0+x1)/2,.5,(z0+z1)/2); box(w+.15,.15,d+.15,MAT.cap,(x0+x1)/2,1.05,(z0+z1)/2); box(w+.05,.25,d+.05,MAT.stoneDark,(x0+x1)/2,.125,(z0+z1)/2); obBox(x0,x1,z0,z1); }
-wallSeg(-30.25,-29.75,-24,22); wallSeg(29.75,30.25,-24,22); wallSeg(-30,30,-24.25,-23.75);
+wallSeg(-30.25,-29.75,-24,22); wallSeg(29.75,30.25,-24,22);   // no north wall: the great hall's steps open onto the courtyard
 wallSeg(-30,-6.6,21.75,22.25); wallSeg(6.6,30,21.75,22.25);
 for (let x=-66;x<=66;x+=4){ box(4,.7,.3,MAT.stone,x,.35,67.5); box(.4,.95,.4,MAT.stoneDark,x-2,.48,67.5); }
 
 /* ================= halls ================= */
-const MAINHALL=building({w:26,d:12,platH:1.2,colH:4.6,roofH:3.4,curl:1.25,tier2:true,x:0,z:-15.5,deity:'thichca',title:'Chánh điện',plaque:'ĐẠI HÙNG BẢO ĐIỆN',main:true});
+// Chánh điện: about 20 times the floor of the old hall, behind the courtyard; its steps end where the north wall stood (z -24).
+function greatHall(g,{b,platH,iw,bz,fz,colH,altarTop,az}){
+  const H=colH-altarTop-.35, sprite=(cv,h,x,y,z)=>{ const sp=spriteOf(cv,h); sp.position.set(x,y,z); g.add(sp); return sp; };
+  // Tam Thế Phật: A Di Đà (past) and Di Lặc (future) beside Thích Ca (present), each on its own altar.
+  for (const [sx,name,h] of [[-1,'adida_s',1.3],[1,'dilac',1.35]]){ const x=sx*10.5;
+    box(7,altarTop,5,MAT.col,x,platH+altarTop/2,az,g); box(7.4,.12,5.4,MAT.gold,x,platH+altarTop,az,g);
+    const st=paintedStatue(name,h,.78); st.scale.setScalar(H*.82/st.userData.h); st.position.set(x,platH+altarTop,az-.2); g.add(st); obLocal(b,x-3.7,x+3.7,az-2.7,az+2.7); }
+  const mt=new THREE.CanvasTexture(paintMural()); mt.colorSpace=THREE.SRGBColorSpace;   // thousand-Buddha wall behind the altars
+  const mural=add(new THREE.Mesh(new THREE.PlaneGeometry(iw*.9,colH*.75),new THREE.MeshLambertMaterial({map:mt})),g,false,true); mural.position.set(0,platH+colH*.45,bz+.35);   // just in front of the 0.3 m back wall
+  for (let i=0;i<18;i++){ const sx=i<9?-1:1, k=i%9, x=sx*(iw/2-2.4), z=bz+9+k*(fz-bz-17)/8;   // eighteen La Hán along the side walls
+    box(2.2,1,2.2,MAT.stone,x,platH+.5,z,g); sprite(paintFigure(arhatLook(i),256),3.6,x,platH+1,z); obLocal(b,x-1.2,x+1.2,z-1.2,z+1.2); }
+  for (const [sx,name] of [[-1,'hophap1'],[1,'hophap2']]){ const x=sx*7, z=fz-5;   // Hộ Pháp guarding the main door
+    box(2.8,1.2,2.8,MAT.stone,x,platH+.6,z,g); sprite(paintDeity(name),6.8,x,platH+1.2,z); obLocal(b,x-1.5,x+1.5,z-1.5,z+1.5); }
+  for (const [sx,name] of [[-1,'quanam'],[1,'diatang']]){ const x=sx*(iw/2-9), z=bz+6;   // Quan Âm and Địa Tạng in the rear corners
+    const st=paintedStatue(name,2.3,.55,name==='quanam'?SM.lotusPink:SM.lotus); st.scale.setScalar(7/st.userData.h); st.position.set(x,platH,z); g.add(st); obLocal(b,x-2,x+2,z-2,z+2); }
+}
+const MAINHALL=building({w:90,d:70,platH:1.2,colH:12,roofH:9,curl:3,tier2:true,x:0,z:-63.2,deity:'thichca',title:'Chánh điện',plaque:'ĐẠI HÙNG BẢO ĐIỆN',main:true,doorW:6,doorH:5.5,stairW:24,extra:greatHall});
 building({w:14,d:8,platH:.7,colH:4,roofH:2.6,curl:.95,x:-23,z:-2,rot:Math.PI/2,doors:1,deity:'quanam',title:'Điện Quan Âm',plaque:'QUAN ÂM CÁC'});
 building({w:14,d:8,platH:.7,colH:4,roofH:2.6,curl:.95,x:23,z:-2,rot:-Math.PI/2,doors:1,deity:'adida',title:'Điện A Di Đà',plaque:'DI ĐÀ ĐIỆN'});
 building({w:10,d:7,platH:.6,colH:3.7,roofH:2.2,curl:.85,x:-23.5,z:14,rot:Math.PI/2,doors:1,deity:'diatang',title:'Điện Địa Tạng',plaque:'ĐỊA TẠNG ĐIỆN'});
 building({w:10,d:7,platH:.6,colH:3.7,roofH:2.2,curl:.85,x:23.5,z:14,rot:-Math.PI/2,doors:1,deity:'dilac',title:'Điện Di Lặc',plaque:'DI LẶC ĐIỆN'});
-building({w:14,d:8,platH:.7,colH:4,roofH:2.6,curl:1,x:40,z:-30,doors:1,deity:'duocsu',title:'Điện Dược Sư',plaque:'DƯỢC SƯ ĐIỆN'});
-building({w:8,d:8,platH:.8,colH:3.8,roofH:2.2,curl:.9,x:-38,z:-30,doors:1,stack:3,deity:'dansanh',title:'Tháp Đản Sanh',plaque:'ĐẢN SANH'});
+building({w:14,d:8,platH:.7,colH:4,roofH:2.6,curl:1,x:46,z:-8,rot:-Math.PI/2,doors:1,deity:'duocsu',title:'Điện Dược Sư',plaque:'DƯỢC SƯ ĐIỆN'});
+building({w:8,d:8,platH:.8,colH:3.8,roofH:2.2,curl:.9,x:-46,z:8,rot:Math.PI/2,doors:1,stack:3,deity:'dansanh',title:'Tháp Đản Sanh',plaque:'ĐẢN SANH'});
 
 /* ================= Tam quan gate ================= */
 function archShape(w,h,ow,oh){ const r=ow/2, s=new THREE.Shape();
@@ -530,12 +551,12 @@ frangipani(16.5,16,1.15); frangipani(-27,-20.5,1); frangipani(27,-20.5,1); frang
 flowerBed(-11,-6.9,6,1.4,['pink','bougain','yellow']); flowerBed(-16.5,19,4,2,['yellow','pink']); flowerBed(16.5,-12.5,4,2,['bougain','pink']);
 for (const [x,z] of [[-7.8,19.8],[7.8,19.8],[-4.4,25],[4.4,25]]) bonsaiPot(x,z,'pine');
 blossomTree(-17,30,'pink',1.3); blossomTree(17,34,'pink',1.2); blossomTree(-6,32,'yellow',1); blossomTree(7,38,'yellow',1.1); blossomTree(-40,10,'pink',1.3); blossomTree(44,-12,'yellow',1.2);
-for (let x=-25;x<=25;x+=4.2) if (Math.abs(x)>3) areca(x,-27.5);
 for (const [x0,x1,zz] of [[8,29,22],[-29,-8,22]]) for (let x=x0;x<=x1;x+=2.2){ blob(x,1.4,zz,.55,.7); shell('bougain',x,1.45,zz,.75,9,.9,.15); for (const sz of [-1,1]) card('bougain',x+R(-.4,.4),.9,zz+sz*.32,.9); }
 for (const sx of [-1,1]) for (let z=-22;z<=20;z+=3.1){ blob(sx*30,1.35,z,.5,.7); shell('bougain',sx*30,1.4,z,.7,7,.85,.15); }
 for (let i=0;i<120;i++){
   const x=R(-66,66), z=R(-42,66);
   if (Math.abs(x)<31 && z>-25 && z<23) continue;
+  if ((Math.abs(x)<50 && z<-22) || (x>-62 && x<-8 && z>31 && z<64)) continue;   // great hall and street market
   if (Math.abs(Math.abs(x)-34)<2.2 && z>-23 && z<29) continue;
   if (Math.abs(x)<5.5 && z>21) continue;
   if (blocked(x,z,1.4) || groundY(x,z)>0) continue;
@@ -557,8 +578,8 @@ for (let i=0;i<120;i++){
 /* ================= lantern strings ================= */
 (function strings(){
   const LP=[];
-  for (const [x,z] of [[-26,4],[26,4],[-9,19],[9,19]]) cyl(.08,.1,6.2,MAT.col,x,3.1,z,WORLD,6);
-  const runs=[[[-14.5,6.8,-8.3],[-26,6.1,4]],[[14.5,6.8,-8.3],[26,6.1,4]],[[-26,6.1,4],[26,6.1,4]],[[-26,6.1,4],[-9,6.1,19]],[[26,6.1,4],[9,6.1,19]],[[-9,6.1,19],[9,6.1,19]],[[-14.5,6.8,-8.3],[14.5,6.8,-8.3]]];
+  for (const [x,z] of [[-26,4],[26,4],[-9,19],[9,19],[-14.5,-8.3],[14.5,-8.3]]) cyl(.08,.1,6.2,MAT.col,x,3.1,z,WORLD,6);
+  const runs=[[[-14.5,6.1,-8.3],[-26,6.1,4]],[[14.5,6.1,-8.3],[26,6.1,4]],[[-26,6.1,4],[26,6.1,4]],[[-26,6.1,4],[-9,6.1,19]],[[26,6.1,4],[9,6.1,19]],[[-9,6.1,19],[9,6.1,19]],[[-14.5,6.1,-8.3],[14.5,6.1,-8.3]]];
   const lineMat=new THREE.LineBasicMaterial({color:'#2a1a12'});
   for (const [a,b] of runs){ const A=V3(...a), B=V3(...b), L=A.distanceTo(B), n=Math.max(4,Math.round(L/2.1)), pts=[];
     for (let i=0;i<=n;i++){ const t=i/n, p=A.clone().lerp(B,t); p.y-=L*.06*4*t*(1-t); pts.push(p); if (i>0&&i<n) LP.push(p.clone().add(V3(0,-.35,0))); }
@@ -584,7 +605,7 @@ function mergeStatic(root){
   for (const v of victims) v.parent.remove(v);
   for (const b of buckets.values()){ const m=new THREE.Mesh(mergeGeometries(b.geos,false),b.mat); m.castShadow=b.cast; m.receiveShadow=b.recv; root.add(m); }
 }
-const CANDLE_POS=V3(-9.5,0,4), CANDLE_SLOTS=[], WISH_POS=V3(-13,0,12), FORTUNE_POS=V3(-6,1.2,-17.6);
+const CANDLE_POS=V3(-9.5,0,4), CANDLE_SLOTS=[], WISH_POS=V3(-13,0,12), FORTUNE_POS=V3(-17,1.2,-93);   // fortune table: in the great hall, left of the altars
 (function candleStand(){
   const g=new THREE.Group(); g.position.copy(CANDLE_POS); WORLD.add(g);
   box(3.4,.3,1.6,MAT.stone,0,.15,0,g);
@@ -632,6 +653,7 @@ function drawSky(day,dusk,fogHex){
   const g=skyCanvas.getContext('2d'), hz=yOf(0), mixc=(a,b,t)=>a.clone().lerp(b,t);
   const N=['#060a1d','#121a3e','#2a3463'].map(c=>new THREE.Color(c)), D=['#3f7fc4','#8cc0ea','#e2eef2'].map(c=>new THREE.Color(c)), K=['#33397a','#d47c6a','#f7c489'].map(c=>new THREE.Color(c));
   const st=[0,1,2].map(i=>mixc(mixc(N[i],D[i],day),K[i],dusk*.85).getStyle());
+  scene.background=new THREE.Color(st[0]);   // the sky cylinder is open on top; eye view looks past its rim into this colour
   const gr=g.createLinearGradient(0,0,0,hz); gr.addColorStop(0,st[0]); gr.addColorStop(.62,st[1]); gr.addColorStop(1,st[2]); g.fillStyle=gr; g.fillRect(0,0,SKY_W,hz+1);
   const night=1-day; if (night>.05) for (const [x,y,r,tw] of STARS){ g.globalAlpha=night*(.35+.65*tw); g.fillStyle='#fff7e0'; g.fillRect(x,y,r,r); } g.globalAlpha=1;
   const layers=[{base:130,k:[[2,40],[5,18],[11,8]],ph:1.3,c:'#7b90a3',m:.62},{base:95,k:[[3,30],[7,12],[13,6]],ph:4.1,c:'#5e7a86',m:.5},{base:62,k:[[4,18],[9,8],[21,4]],ph:2.2,c:'#40605a',m:.38}];
