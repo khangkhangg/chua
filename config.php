@@ -6,7 +6,7 @@ declare(strict_types=1);
 // not committed. See config.local.example.php.
 $config = [
     'temple_name'   => 'An Tâm Nam Chùa',
-    'asset_version' => '0.8.4',
+    'asset_version' => '0.9.0',
     'base_url'      => 'https://chua.vietnamcos.com',
     // Long random string used to hash visitor IP addresses. Set it in config.local.php.
     'secret'        => 'change-me',

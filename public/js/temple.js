@@ -3,9 +3,10 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/+esm';
 import { mergeGeometries } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/utils/BufferGeometryUtils.js/+esm';
 // ?v must match asset_version in config.php: browsers keep js files for 7 days.
-import { Net, POSES as NET_POSES, headingFromByte } from './net.js?v=0.8.4';
-import { t as tr, setLang, getLang, applyStatic } from './i18n.js?v=0.8.4';
-import { paintDeity, paintFigure, arhatLook, paintMural } from './painted.js?v=0.8.4';
+import { Net, POSES as NET_POSES, headingFromByte } from './net.js?v=0.9.0';
+import { t as tr, setLang, getLang, applyStatic } from './i18n.js?v=0.9.0';
+import { paintDeity, paintFigure, arhatLook, paintMural } from './painted.js?v=0.9.0';
+import { XAM } from './xam.js?v=0.9.0';
 const CFG=window.CHUA||{realtime:false,payments:false,testMode:false,sizes:{}};
 
 /* ================= utilities ================= */
@@ -605,7 +606,7 @@ function mergeStatic(root){
   for (const v of victims) v.parent.remove(v);
   for (const b of buckets.values()){ const m=new THREE.Mesh(mergeGeometries(b.geos,false),b.mat); m.castShadow=b.cast; m.receiveShadow=b.recv; root.add(m); }
 }
-const CANDLE_POS=V3(-9.5,0,4), CANDLE_SLOTS=[], WISH_POS=V3(-13,0,12), FORTUNE_POS=V3(-17,1.2,-93);   // fortune table: in the great hall, left of the altars
+const CANDLE_POS=V3(-9.5,0,4), CANDLE_SLOTS=[], WISH_POS=V3(-13,0,12), FORTUNE_POS=V3(-7,0,-13);   // xin xăm stall: in the open courtyard where everyone sees it
 (function candleStand(){
   const g=new THREE.Group(); g.position.copy(CANDLE_POS); WORLD.add(g);
   box(3.4,.3,1.6,MAT.stone,0,.15,0,g);
@@ -622,12 +623,18 @@ const CANDLE_POS=V3(-9.5,0,4), CANDLE_SLOTS=[], WISH_POS=V3(-13,0,12), FORTUNE_P
 })();
 const fortuneCup=new THREE.Group(); fortuneCup.userData.noMerge=true;
 (function fortuneTable(){
+  // A small roofed stall in the open courtyard: red table, the teller's stool behind it, a sign everyone can read.
   const g=new THREE.Group(); g.position.copy(FORTUNE_POS); WORLD.add(g);
-  box(.9,.78,.6,MAT.col,0,.39,0,g); box(.95,.05,.65,MAT.gold,0,.8,0,g);
-  fortuneCup.position.set(0,.82,0); g.add(fortuneCup);
+  box(2.2,.78,1,MAT.col,0,.39,0,g); box(2.3,.05,1.1,MAT.gold,0,.8,0,g); box(.5,.45,.5,MAT.col,0,.22,-1.05,g);
+  for (const sx of [-1,1]) for (const sz of [-1.4,.6]) cyl(.07,.07,2.7,MAT.col,sx*1.5,1.35,sz,g,8);
+  add(new THREE.Mesh(roofGeo(3.8,3,1,.5),MAT.roof),g).position.set(0,2.7,-.4);
+  const sign=add(new THREE.Mesh(new THREE.PlaneGeometry(2.2,.55),new THREE.MeshLambertMaterial({map:canvasTex(256,64,(c,w,h)=>{ c.fillStyle='#b8261c'; c.fillRect(0,0,w,h); c.strokeStyle='#e5b53c'; c.lineWidth=4; c.strokeRect(3,3,w-6,h-6);
+    c.fillStyle='#ffe8a8'; c.font='bold 34px "Noto Serif Display",serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('XIN XĂM',w/2,h/2+2); },false)})),g); sign.position.set(0,2.32,.64);
+  box(.5,.03,.34,lam('#f3e3b4'),-.55,.84,.12,g);   // stack of fortune slips
+  fortuneCup.position.set(.5,.82,.15); g.add(fortuneCup);
   cyl(.11,.1,.36,MAT.trunk,0,.18,0,fortuneCup,10);
   for (let i=0;i<14;i++){ const st=box(.015,.42,.015,MAT.gold,R(-.06,.06),.32,R(-.06,.06),fortuneCup); st.rotation.set(R(-.12,.12),0,R(-.12,.12)); }
-  obCirc(FORTUNE_POS.x,FORTUNE_POS.z,.55);
+  obBox(FORTUNE_POS.x-1.6,FORTUNE_POS.x+1.6,FORTUNE_POS.z-1.5,FORTUNE_POS.z+.6);
 })();
 mergeStatic(WORLD);
 for (const b of BUILDINGS){ mergeStatic(b.g); mergeStatic(b.cut); }
@@ -860,6 +867,7 @@ const MARKET_STALLS=[];   // rentable stalls; slot numbers match the stalls tabl
   for (const [z0,z1] of [[38,45.5],[50.5,60]]) for (const x of [-12.5,-16.5]){ for (let z=z0;z<=z1;z+=1.05) moto(x,z,Math.PI+R(-.18,.18)); obBox(x-1,x+1,z0-.5,z1+.5); }
   for (let i=0;i<6;i++){ xichlo(-52+i*2.4,35.5,0); if (i%2===0) person('modern',['#4a5a3a','#2f4a6d','#6b5a3a'],-52+i*2.4,35.9,0,'sit',M,.55); }   // drivers resting in their own seats
   obBox(-53.5,-38.5,34,37);
+  person('robe',['#8a5a2a'],FORTUNE_POS.x,FORTUNE_POS.z-1.05,0,'sit',M,.45);   // the fortune teller (thầy giải xăm) at the xin xăm stall
   mergeStatic(M);
 })();
 
@@ -1486,38 +1494,28 @@ function openWish(){
   };
 }
 
-// ---- fortune sticks (xin xăm) ----
-const FORTUNES=[
-  {lvl:'Thượng cát',vi:'Hạt giống gieo hôm nay,\nđến mùa sẽ nở hoa.\nKiên nhẫn chính là phước.',en:'The seed you plant today\nwill flower in its season.\nPatience is itself a blessing.'},
-  {lvl:'Cát',vi:'Mây tan thì trăng sáng,\nlòng lặng thì đường rõ.',en:'When the clouds part the moon shines;\nwhen the heart is still the road is clear.'},
-  {lvl:'Cát',vi:'Thuyền nhỏ qua sông rộng,\nchèo đều sẽ tới bờ.',en:'A small boat on a wide river\nreaches the shore by steady rowing.'},
-  {lvl:'Bình',vi:'Đừng vội hái quả xanh,\nđợi nắng thêm vài hôm.',en:'Do not pick the fruit while it is green;\nlet it have a few more days of sun.'},
-  {lvl:'Thượng cát',vi:'Nhà có người hiếu thảo,\nphúc theo như bóng hình.',en:'A home with a grateful child\nis followed by good fortune like a shadow.'},
-  {lvl:'Cát',vi:'Lời nói hiền như nước,\nmài mòn cả đá cứng.',en:'Gentle words are like water:\nin time they wear down hard stone.'},
-  {lvl:'Bình',vi:'Gió đổi chiều không lâu,\ngiữ mình như cây tre.',en:'The wind will not blow this way for long;\nbend like bamboo and stay rooted.'},
-  {lvl:'Cát',vi:'Cho đi một bát cơm,\nnhận về một mùa lúa.',en:'Give away one bowl of rice\nand receive a season of harvest.'},
-  {lvl:'Thượng cát',vi:'Sen mọc từ bùn sâu,\nvẫn thơm và vẫn sạch.',en:'The lotus grows from deep mud\nand still blooms clean and fragrant.'},
-  {lvl:'Bình',vi:'Việc khó chia làm nhỏ,\nmỗi ngày bước một bước.',en:'Cut the hard task into small pieces\nand take one step each day.'},
-  {lvl:'Cát',vi:'Bạn cũ như rượu quý,\ncàng lâu càng đậm đà.',en:'Old friends are like fine tea:\nthe longer kept, the richer.'},
-  {lvl:'Cát',vi:'Đèn nhỏ trong đêm tối\nsoi đủ một bước chân.',en:'A small lamp in the dark night\ngives enough light for the next step.'},
-  {lvl:'Bình',vi:'Muốn nước trong, để lắng;\nmuốn tâm an, thở chậm.',en:'Let muddy water rest and it clears;\nbreathe slowly and the mind settles.'},
-  {lvl:'Thượng cát',vi:'Trồng cây hôm nay mát,\ncon cháu mai ngồi chơi.',en:'Plant a tree today\nand your grandchildren will sit in its shade.'},
-  {lvl:'Cát',vi:'Biết đủ là giàu có,\nbiết ơn là bình an.',en:'Knowing enough is wealth;\nknowing gratitude is peace.'},
-  {lvl:'Bình',vi:'Núi cao vẫn có lối,\nchỉ cần chịu đi vòng.',en:'Even a high mountain has a path,\nif you are willing to walk around.'},
-];
+// ---- xin xăm: shake the cup, toss the moon blocks (keo), read the slip; the slips live in xam.js ----
 let fortuneShake=0;
 function shakeSound(){ if (!AC||muted) return; for (let i=0;i<14;i++) noiseHit('bandpass',2600+Math.random()*1400,3,.07,.03,templeBus,nowA()+i*.15+Math.random()*.05); }
+let fortuneBusy=false, fortuneNear=false;
+function xamCard(x){ const vi=getLang()==='vi';
+  return `<p class="xam-lv">${esc(x.lv)}</p><p class="verse">${x.poem.map(esc).join('<br>')}</p>`
+    +(vi?`<dl class="xam">${[['fortuneLove',x.love],['fortuneMoney',x.money],['fortuneWork',x.work]].map(([k,t])=>`<dt>${esc(tr(k))}</dt><dd>${esc(t)}</dd>`).join('')}</dl>`:`<p>${esc(x.en)}</p>`)
+    +`<p class="xam-note">${esc(tr('fortuneNote'))}</p><div class="actions"><button type="button" class="btn" id="xamAgain">${esc(tr('fortuneAgain'))}</button></div>`; }
+// Walking up to the stall: the teller asks; the button (or X) draws.
+function fortuneAsk(){ openModal(tr('fortuneTitle'),`<p>${esc(tr('fortuneAsk'))}</p><div class="actions"><button type="button" class="btn" id="xamGo">${esc(tr('fortuneDraw'))}</button><button type="button" class="btn ghost" id="xamNo">${esc(tr('stallNo'))}</button></div>`);
+  $('#xamGo').onclick=drawFortune; $('#xamNo').onclick=closeModal; }
+// Shake the cup, then toss the moon blocks: one up and one down (thánh keo) means the gods accept the stick.
 function drawFortune(){
-  if (me.pos.distanceTo(FORTUNE_POS)>2.6){ toast(tr('fortuneFar'),4); return; }
-  const key='antam-xam-'+today(); let n=+LS.get(key,'0');
-  me.pose='pray'; me.poseT=0; fortuneShake=2.2; shakeSound(); toast(tr('fortuneShake'),2); net.send({t:'act',a:'fortune'});
-  setTimeout(()=>{
-    if (!n){ n=1+Math.floor(Math.random()*FORTUNES.length); LS.set(key,String(n)); award(1,'Xin xăm','fortune'); }
-    const f=FORTUNES[n-1], vi=getLang()==='vi';
-    openModal(tr('fortuneTitle'),`<p><b>${tr('fortuneStick',{n})}</b> · ${esc(f.lvl)}</p><p class="verse">${esc(vi?f.vi:f.en)}</p><p class="verse" style="font-size:14px;opacity:.7">${esc(vi?f.en:f.vi)}</p><p>${tr('fortuneNote')}</p>`);
-    me.pose='stand';
-  },2300);
-}
+  if (me.pos.distanceTo(FORTUNE_POS)>3){ toast(tr('fortuneFar'),4); return; }
+  if (fortuneBusy) return; fortuneBusy=true; closeModal();
+  me.pose='pray'; me.poseT=0; fortuneShake=2.4; shakeSound(); toast(tr('fortuneShake'),2.4); net.send({t:'act',a:'fortune'});
+  setTimeout(()=>{ fortuneBusy=false; me.pose='stand';
+    const n=1+Math.floor(Math.random()*XAM.length), keo=Math.random();
+    if (keo<.3){ openModal(tr('fortuneTitle'),`<p>${esc(tr(keo<.15?'keoUp':'keoDown'))}</p><div class="actions"><button type="button" class="btn" id="xamAgain">${esc(tr('fortuneShakeAgain'))}</button></div>`); $('#xamAgain').onclick=drawFortune; return; }
+    const key='antam-xam-'+today(); if (!LS.get(key)){ LS.set(key,String(n)); award(1,'Xin xăm','fortune'); }
+    openModal(tr('fortuneStick',{n}),xamCard(XAM[n-1])); $('#xamAgain').onclick=drawFortune; },2400); }
+function nearFortune(){ const near=me.pos.distanceTo(FORTUNE_POS)<2.6; if (near===fortuneNear) return; fortuneNear=near; if (near&&modal.hidden&&!fortuneBusy) fortuneAsk(); }
 function updateFortuneCup(T,dt){ fortuneShake=Math.max(0,fortuneShake-dt); fortuneCup.rotation.z=Math.sin(T*38)*.22*Math.min(1,fortuneShake); fortuneCup.rotation.x=Math.cos(T*31)*.12*Math.min(1,fortuneShake); }
 
 // ---- the great bell at dawn and dusk, small bells in the halls ----
@@ -1638,7 +1636,7 @@ function frame(){
   const dt=Math.min(clock.getDelta(),.05); T+=dt;
   if (!reduceMotion) for (const m of AURAS) m.rotation.z+=dt*m.userData.spin;
   GATE.visible=!(me.entered&&me.pos.z<21);
-  if (me.entered) nearStall();
+  if (me.entered){ nearStall(); nearFortune(); }
   MAT.rays.opacity=.55+.2*Math.sin(T*1.2);
   if (liveEl.checked && Math.floor(T*2)!==Math.floor((T-dt)*2)){ const d=new Date(); setHour(d.getHours()+d.getMinutes()/60); }
   bellReward-=dt; dogReward-=dt;

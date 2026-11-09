@@ -168,6 +168,12 @@ body.rm #reward.go{animation:fade 2.2s linear forwards}
 @keyframes arrive{from{opacity:0;transform:translateY(10px)}}
 body.entered .arrivals{display:none}
 body.rm .arrivals li.new{animation:none}
+#modal .xam-lv{color:var(--gold);font-weight:700;margin:0 0 8px}
+#modal .verse{font:italic 500 17px/1.6 var(--f-display);color:var(--paper);margin:0 0 12px;padding-left:12px;border-left:2px solid var(--gold-dim)}
+#modal dl.xam{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0 0 10px;font-size:13px}
+#modal dl.xam dt{color:var(--gold)}
+#modal dl.xam dd{margin:0;color:var(--paper)}
+#modal .xam-note{font-size:12px;color:var(--muted)}
 #modal .stall-card{display:flex;gap:14px;align-items:center;margin-bottom:10px}
 #modal .stall-card img{width:96px;height:96px;border-radius:6px;object-fit:contain;background:rgba(0,0,0,.28)}
 #modal h4{margin:6px 0;font-size:13px;color:var(--muted)}
