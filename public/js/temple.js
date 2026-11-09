@@ -1,7 +1,11 @@
-import * as THREE from 'three';
-import { mergeGeometries } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/utils/BufferGeometryUtils.js';
-import { Net, POSES as NET_POSES, headingFromByte } from './net.js';
-import { t as tr, setLang, getLang, applyStatic } from './i18n.js';
+// Full URLs, no import map: Cloudflare injects a module script above any map, and Firefox then ignores the map.
+// The +esm build of the utils imports this same three URL, so both share one copy.
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/+esm';
+import { mergeGeometries } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/utils/BufferGeometryUtils.js/+esm';
+// ?v must match asset_version in config.php: browsers keep js files for 7 days.
+import { Net, POSES as NET_POSES, headingFromByte } from './net.js?v=0.7.0';
+import { t as tr, setLang, getLang, applyStatic } from './i18n.js?v=0.7.0';
+import { paintDeity } from './painted.js?v=0.7.0';
 const CFG=window.CHUA||{realtime:false,payments:false,testMode:false,sizes:{}};
 
 /* ================= utilities ================= */
@@ -197,98 +201,35 @@ function lotusSeat(g,r,mat=SM.lotus){
   cyl(r*.72,r*.62,r*.12,SM.goldDark,0,r*.5,0,g,16); return r*.56;
 }
 function haloPlane(g,r,y,z,sy=1){ const m=new THREE.Mesh(new THREE.PlaneGeometry(2*r,2*r*sy),MAT.halo); m.position.set(0,y,z); g.add(m); }
-function buddhaHead(g,y,o){
-  const hr=.2, skin=o.skin||SM.gold, hair=o.hair||SM.hair;
-  sph(hr,skin,0,y,0,g,1,1.12,1.02);
-  cyl(hr*.42,hr*.5,hr*.7,skin,0,y-hr*1.2,0,g,10);
-  if (!o.bald){
-    const cap=add(new THREE.Mesh(new THREE.SphereGeometry(hr*1.03,16,10,0,Math.PI*2,0,Math.PI*.42),hair),g); cap.position.y=y+hr*.12; cap.rotation.x=-.18;
-    for (let i=0;i<44;i++){ const t=(i+.5)/44, pol=t*Math.PI*.4, az=i*2.39; sph(hr*.13,hair,Math.sin(pol)*Math.cos(az)*hr*1.04,y+hr*.12+Math.cos(pol)*hr*1.12,Math.sin(pol)*Math.sin(az)*hr*1.04-hr*.05,g); }
-    sph(hr*.48,hair,0,y+hr*1.3,-hr*.05,g);
-  }
-  for (const sx of [-1,1]){ const e=box(hr*.32,hr*.05,hr*.05,SM.dark,sx*hr*.36,y+hr*.1,hr*.97,g); e.rotation.z=sx*-.12; box(hr*.14,hr*.78,hr*.24,skin,sx*hr*1.02,y-hr*.15,0,g); }
-  sph(hr*.06,SM.pearl,0,y+hr*.42,hr*1.0,g); box(hr*.16,hr*.3,hr*.2,skin,0,y-hr*.12,hr*1.02,g); box(hr*.3,hr*.05,hr*.05,SM.lip,0,y-hr*.45,hr*.9,g);
-  return hr;
-}
-const lathe=(pts,mat,y,g,seg=20)=>{ const m=add(new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r,yy])=>new THREE.Vector2(r,yy)),seg),mat),g); m.position.y=y; return m; };
-function seatedBuddha(o){
-  const g=new THREE.Group(), robe=o.robe||SM.gold, skin=o.skin||SM.gold;
-  const y0=lotusSeat(g,.78,o.lotus||SM.lotus);
-  sph(1,robe,0,y0+.14,.08,g,.66,.2,.44);
-  for (const sx of [-1,1]) sph(.07,skin,sx*.24,y0+.3,.3,g,1,.5,1.5);
-  lathe([[.36,0],[.37,.12],[.33,.38],[.3,.55],[.34,.7],[.22,.8],[.1,.84],[0,.85]],robe,y0+.12,g);
-  const sash=box(.76,.12,.62,o.sash||SM.goldDark,0,y0+.62,0,g); sash.rotation.z=.65;
-  const nl=add(new THREE.Mesh(new THREE.TorusGeometry(.17,.025,5,16),o.sash||SM.goldDark),g); nl.position.y=y0+.92; nl.rotation.x=Math.PI/2;
-  for (const sx of [-1,1]){
-    const S=V3(sx*.33,y0+.82,0), E=V3(sx*.43,y0+.44,.1);
-    let W=V3(sx*.14,y0+.33,.3);
-    if (o.mudra==='earth' && sx<0) W=V3(-.42,y0+.2,.44);
-    limb(g,S,E,.085,robe); limb(g,E,W,.075,robe);
-    if (o.mudra==='earth' && sx<0) box(.09,.16,.06,skin,W.x,W.y-.08,W.z,g);
-  }
-  sph(1,skin,0,y0+.34,.3,g,.2,.06,.14);
-  if (o.mudra==='bowl') lathe([[0,0],[.13,.02],[.16,.08],[.15,.11]],SM.lapis,y0+.36,g,14).position.z=.3;
-  buddhaHead(g,y0+1.2,o);
-  haloPlane(g,.5,y0+1.22,-.32); haloPlane(g,.95,y0+.78,-.45,1.5);
-  g.userData.h=y0+1.5; return g;
-}
-function standingBuddha(o){
-  const g=new THREE.Group(), robe=o.robe||SM.gold, skin=o.skin||SM.gold;
-  const y0=lotusSeat(g,.55,o.lotus||SM.lotus);
-  lathe([[.3,0],[.31,.06],[.27,.4],[.25,.9],[.27,1.2],[.32,1.42],[.2,1.54],[.09,1.58],[0,1.59]],robe,y0,g);
-  for (const sx of [-1,1]) box(.09,.06,.16,skin,sx*.1,y0+.03,.27,g);
-  for (const y of [.18,.55,.95]){ const t=add(new THREE.Mesh(new THREE.TorusGeometry(.275-y*.02,.018,4,18),o.sash||SM.goldDark),g); t.position.y=y0+y; t.rotation.x=Math.PI/2+.12; }
-  const s=box(.62,.1,.52,o.sash||SM.goldDark,0,y0+1.25,0,g); s.rotation.z=.7;
-  const Lw=o.leftW?V3(o.leftW.x,y0+o.leftW.y,o.leftW.z):V3(.3,y0+.82,.14);
-  limb(g,V3(.3,y0+1.45,0),V3(.36,y0+1.1,.05),.07,robe); limb(g,V3(.36,y0+1.1,.05),Lw,.065,robe); box(.08,.12,.05,skin,Lw.x,Lw.y-.06,Lw.z,g);
-  const rE=o.rightE?V3(o.rightE.x,y0+o.rightE.y,o.rightE.z):V3(-.38,y0+1.12,.12), rW=o.rightW?V3(o.rightW.x,y0+o.rightW.y,o.rightW.z):V3(-.34,y0+1.42,.26);
-  limb(g,V3(-.3,y0+1.45,0),rE,.07,robe); limb(g,rE,rW,.065,robe); box(.1,.15,.04,skin,rW.x,rW.y+.06,rW.z,g);
-  g.userData.y0=y0; buddhaHead(g,y0+1.8,o); haloPlane(g,.48,y0+1.84,-.3);
-  g.userData.h=y0+2.05; return g;
-}
+/* Glowing aureole behind each statue: soft rays that turn slowly and a bright arc that runs around the halo. */
+const rayTex=canvasTex(256,256,g=>{ g.translate(128,128); const core=g.createRadialGradient(0,0,0,0,0,110); core.addColorStop(0,'rgba(255,240,200,.55)'); core.addColorStop(1,'rgba(255,220,150,0)'); g.fillStyle=core; g.fillRect(-128,-128,256,256);
+  for (let i=0;i<72;i++){ const L=[126,96,112][i%3], w=[3.5,2,2.5][i%3], gr=g.createLinearGradient(0,0,0,-L);
+  gr.addColorStop(0,'rgba(255,240,200,.5)'); gr.addColorStop(1,'rgba(255,220,150,0)'); g.fillStyle=gr; g.beginPath(); g.moveTo(-1,0); g.lineTo(-w,-L); g.lineTo(w,-L); g.closePath(); g.fill(); g.rotate(Math.PI*2/72); } });
+const ringTex=canvasTex(256,256,g=>{ g.translate(128,128); g.lineWidth=4; g.strokeStyle='rgba(255,230,170,.25)'; g.beginPath(); g.arc(0,0,112,0,Math.PI*2); g.stroke();
+  for (let i=0;i<48;i++){ const a=i/48*Math.PI*.9; g.strokeStyle=`rgba(255,246,215,${(i/48)**2})`; g.lineWidth=3+5*(i/48); g.beginPath(); g.arc(0,0,112,a,a+.07); g.stroke(); } });
+for (const t of [rayTex,ringTex]) t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;   // no bleed from the opposite edge while the disc turns
+const glowMat=map=>new THREE.MeshBasicMaterial({map,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,color:'#ffd98a'});
+MAT.rays=glowMat(rayTex); MAT.ring=glowMat(ringTex);
+const AURAS=[];
+function aureole(g,r,y,z){ for (const [mat,spin,size,dz] of [[MAT.rays,.12,2,0],[MAT.ring,-.9,1.55,.02]]){ const m=new THREE.Mesh(new THREE.PlaneGeometry(size*r,size*r),mat);
+  m.position.set(0,y,z+dz); m.userData.noMerge=true; m.userData.spin=spin; g.add(m); AURAS.push(m); } }
+
+const lathe=(pts,mat,y,g,seg=32)=>{ const m=add(new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r,yy])=>new THREE.Vector2(r,yy)),seg),mat),g); m.position.y=y; return m; };
+/* Statues are paintings (painted.js) shown as sprites that always face the visitor, standing on a 3D lotus with the aureole behind. */
+function paintedStatue(name,h,seat,lotus=SM.lotus,base){
+  const g=new THREE.Group(), lg=new THREE.Group(); if (base){ base(g); lg.position.y=.3; } g.add(lg);
+  const y0=lg.position.y+lotusSeat(lg,seat,lotus), cv=paintDeity(name), tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,alphaTest:.5,color:'#f3e9d6'})); sp.center.set(.5,0); sp.scale.set(h*cv.width/cv.height,h,1); sp.position.set(0,y0-.06,seat*.9); g.add(sp);   // in front of the petals so the lotus doesn't hide the lap
+  haloPlane(g,h*.3,y0+h*.82,-.25); aureole(g,h*.55,y0+h*.6,-.32);
+  g.userData.h=y0+h; return g; }
 const STATUE={
-  thichca:()=>seatedBuddha({mudra:'earth'}),
-  duocsu:()=>seatedBuddha({mudra:'bowl',robe:SM.robeRed,sash:SM.gold}),
-  adida:()=>standingBuddha({}),
-  quanam:()=>{ const g=standingBuddha({robe:SM.porcelain,skin:SM.porcelain,sash:SM.gold,lotus:SM.lotusPink,bald:true,leftW:V3(.16,1.0,.3),rightW:V3(-.3,1.38,.22)});
-    const y0=g.userData.y0, hy=y0+1.8;
-    const veil=add(new THREE.Mesh(new THREE.SphereGeometry(.25,14,10,0,Math.PI*2,0,Math.PI*.62),SM.porcelain),g); veil.position.set(0,hy+.04,-.03); veil.scale.set(1,1.6,1);
-    for (let i=-2;i<=2;i++) box(.07,.12,.02,SM.gold,i*.07,hy+.22-Math.abs(i)*.02,.2-Math.abs(i)*.02,g);
-    const nk=add(new THREE.Mesh(new THREE.TorusGeometry(.16,.02,5,16),SM.gold),g); nk.position.y=y0+1.48; nk.rotation.x=1.35;
-    const vase=lathe([[0,0],[.06,.01],[.07,.08],[.03,.16],[.035,.22],[0,.22]],SM.porcelain,0,g,12); vase.position.set(.16,y0+.98,.32);
-    limb(g,V3(-.3,y0+1.44,.22),V3(-.26,y0+1.85,.3),.012,SM.green); for (let i=0;i<4;i++) sph(.05,SM.green,-.27+R(-.05,.05),y0+1.6+i*.07,.3,g,.6,1.6,.6);
-    return g; },
-  diatang:()=>{ const g=standingBuddha({robe:SM.robeRed,sash:SM.gold,bald:true,rightE:V3(-.42,1.05,.12),rightW:V3(-.42,1.2,.2),leftW:V3(.14,1.12,.3)});
-    const y0=g.userData.y0, hy=y0+1.8;
-    for (let i=-2;i<=2;i++){ const p=box(.08,.14,.02,SM.gold,i*.075,hy+.2-Math.abs(i)*.025,.18-Math.abs(i)*.03,g); p.rotation.y=i*.35; }
-    cyl(.018,.018,2.3,SM.goldDark,-.42,y0+1.0,.2,g,6);
-    for (const y of [2.12,2.2]){ const t=add(new THREE.Mesh(new THREE.TorusGeometry(.1,.015,4,12),SM.gold),g); t.position.set(-.42,y0+y,.2); }
-    sph(.07,SM.pearl,.14,y0+1.12,.36,g); g.userData.h=y0+2.25; return g; },
-  dilac:()=>{ const g=new THREE.Group(), gd=SM.gold;
-    box(1.7,.35,1.1,SM.goldDark,0,.175,0,g); const y0=.35;
-    sph(.5,gd,0,y0+.55,.14,g,1,.95,.9); sph(.42,gd,0,y0+.98,0,g);
-    for (const sx of [-1,1]) box(.3,.9,.62,SM.robeRed,sx*.46,y0+.62,-.06,g);
-    sph(1,SM.robeRed,.26,y0+.12,.26,g,.46,.16,.3);
-    limb(g,V3(-.2,y0+.2,0),V3(-.36,y0+.58,.4),.14,SM.robeRed); limb(g,V3(-.36,y0+.58,.4),V3(-.38,y0+.12,.56),.12,SM.robeRed);
-    limb(g,V3(-.42,y0+1.08,0),V3(-.56,y0+.76,.22),.1,gd); limb(g,V3(-.56,y0+.76,.22),V3(-.4,y0+.66,.46),.09,gd);
-    limb(g,V3(.42,y0+1.08,0),V3(.6,y0+.72,.12),.1,gd); limb(g,V3(.6,y0+.72,.12),V3(.56,y0+.48,.3),.09,gd);
-    const hy=y0+1.48; sph(.27,gd,0,hy,0,g);
-    for (const sx of [-1,1]){ box(.05,.26,.09,gd,sx*.27,hy-.06,0,g); const e=add(new THREE.Mesh(new THREE.TorusGeometry(.035,.012,4,8,Math.PI),SM.dark),g); e.position.set(sx*.09,hy+.05,.25); sph(.06,gd,sx*.13,hy-.07,.22,g); }
-    const m=add(new THREE.Mesh(new THREE.TorusGeometry(.09,.018,4,10,Math.PI),SM.lip),g); m.position.set(0,hy-.08,.25); m.rotation.z=Math.PI;
-    const bd=add(new THREE.Mesh(new THREE.TorusGeometry(.3,.03,5,18),SM.robeRed),g); bd.position.set(0,y0+1.12,.06); bd.rotation.x=1.25;
-    sph(.32,SM.cloth,.82,y0+.3,.12,g,1,.9,1);
-    haloPlane(g,.55,hy+.05,-.35); g.userData.h=hy+.35; return g; },
-  dansanh:()=>{ const g=new THREE.Group();
-    cyl(.72,.62,.36,SM.goldDark,0,.18,0,g,18); const w=add(new THREE.Mesh(new THREE.CircleGeometry(.62,18),MAT.water),g); w.rotation.x=-Math.PI/2; w.position.y=.37;
-    const lg=new THREE.Group(); lg.position.y=.3; g.add(lg); const y0=.3+lotusSeat(lg,.36);
-    for (const sx of [-1,1]) limb(g,V3(sx*.06,y0+.42,0),V3(sx*.07,y0,.02),.055,SM.gold);
-    lathe([[.14,0],[.17,.08],[.15,.18],[0,.19]],SM.robeRed,y0+.28,g,12);
-    lathe([[.13,0],[.15,.12],[.13,.3],[.07,.36],[0,.37]],SM.gold,y0+.42,g,12);
-    limb(g,V3(-.13,y0+.74,0),V3(-.17,y0+.96,.02),.04,SM.gold); limb(g,V3(-.17,y0+.96,.02),V3(-.15,y0+1.2,.04),.035,SM.gold);
-    limb(g,V3(.13,y0+.74,0),V3(.18,y0+.54,.05),.04,SM.gold); limb(g,V3(.18,y0+.54,.05),V3(.2,y0+.34,.1),.035,SM.gold);
-    sph(.15,SM.gold,0,y0+.93,0,g,1,1.08,1); sph(.07,SM.hair,0,y0+1.08,-.02,g);
-    for (const sx of [-1,1]) box(.045,.012,.01,SM.dark,sx*.05,y0+.95,.145,g);
-    haloPlane(g,.32,y0+.95,-.22); g.userData.h=y0+1.25; return g; },
+  thichca:()=>paintedStatue('thichca',1.3,.78),
+  duocsu:()=>paintedStatue('duocsu',1.3,.78),
+  adida:()=>paintedStatue('adida',2.3,.55),
+  quanam:()=>paintedStatue('quanam',2.3,.55,SM.lotusPink),
+  diatang:()=>paintedStatue('diatang',2.3,.55),
+  dilac:()=>paintedStatue('dilac',1.35,.78),
+  dansanh:()=>paintedStatue('dansanh',1.05,.36,SM.lotus,g=>{ cyl(.72,.62,.36,SM.goldDark,0,.18,0,g,32); const w=add(new THREE.Mesh(new THREE.CircleGeometry(.62,32),MAT.water),g); w.rotation.x=-Math.PI/2; w.position.y=.37; }),
 };
 const DEITY_NAMES={thichca:'Đức Phật Thích Ca Mâu Ni',adida:'Đức Phật A Di Đà',quanam:'Quan Thế Âm Bồ Tát',diatang:'Địa Tạng Vương Bồ Tát',dilac:'Đức Phật Di Lặc',duocsu:'Đức Phật Dược Sư',dansanh:'Đức Phật Đản Sanh'};
 const INVOKE={thichca:'Nam mô Bổn Sư Thích Ca Mâu Ni Phật',adida:'Nam mô A Di Đà Phật',quanam:'Nam mô Đại Từ Đại Bi Quán Thế Âm Bồ Tát',diatang:'Nam mô Đại Nguyện Địa Tạng Vương Bồ Tát',dilac:'Nam mô Đương Lai Hạ Sanh Di Lặc Tôn Phật',duocsu:'Nam mô Dược Sư Lưu Ly Quang Vương Phật',dansanh:'Nam mô Bổn Sư Thích Ca Mâu Ni Phật'};
@@ -452,8 +393,10 @@ building({w:8,d:8,platH:.8,colH:3.8,roofH:2.2,curl:.9,x:-38,z:-30,doors:1,stack:
 function archShape(w,h,ow,oh){ const r=ow/2, s=new THREE.Shape();
   s.moveTo(-w/2,0); s.lineTo(-ow/2,0); s.lineTo(-ow/2,oh-r); s.absarc(0,oh-r,r,Math.PI,0,true); s.lineTo(ow/2,0); s.lineTo(w/2,0); s.lineTo(w/2,h); s.lineTo(-w/2,h); s.lineTo(-w/2,0);
   const g=new THREE.ExtrudeGeometry(s,{depth:1.1,bevelEnabled:false,curveSegments:12}); g.translate(0,0,-.55); return g; }
+// Kept out of the static merge so it can hide once the visitor is inside and stop blocking the view of the courtyard.
+const GATE=new THREE.Group(); GATE.userData.noMerge=true;
 (function gate(){
-  const g=new THREE.Group(); g.position.set(0,0,22); WORLD.add(g); const yel=lam('#dcb653');
+  const g=GATE; g.position.set(0,0,22); WORLD.add(g); const yel=lam('#dcb653');
   add(new THREE.Mesh(archShape(5.6,5.3,2.6,4.0),yel),g);
   for (const sx of [-1,1]){
     add(new THREE.Mesh(archShape(3.4,3.9,1.7,2.9),yel),g).position.x=sx*4.3;
@@ -844,6 +787,60 @@ const agents=[];
 function angLerp(a,b,t){ const d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; return a+d*t; }
 function freeSpot(x0,x1,z0,z1){ for (let i=0;i<40;i++){ const x=R(x0,x1), z=R(z0,z1); if (!blocked(x,z,.6) && groundY(x,z)===0) return [x,z]; } return [0,5]; }
 let me;
+/* ================= street market left of the front path: food, offerings, motorbikes, xích lô ================= */
+const MARKET_STALLS=[];   // rentable stalls; slot numbers match the stalls table (docs/STALLS.md)
+(function market(){
+  const M=new THREE.Group(); WORLD.add(M);
+  const wood=pm('#8a5a34'), steel=pm('#c9ccd1'), dark=pm('#26221f'), white=pm('#efeae0'), red=pm('#c8322a'), gold=pm('#e5b53c');
+  const place=(o,x,z,rot=0,parent=M)=>{ o.position.set(x,parent===M?groundY(x,z):0,z); o.rotation.y=rot; parent.add(o); return o; };
+  const signMat=(text,bg)=>new THREE.MeshLambertMaterial({map:canvasTex(256,64,(g,w,h)=>{ g.fillStyle=bg; g.fillRect(0,0,w,h); g.fillStyle='#fff6dc'; g.font='bold 34px "Be Vietnam Pro",sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(text,w/2,h/2+2); },false)});
+  const pile=(g,n,cols,x,y,z,r,spread)=>{ for (let i=0;i<n;i++) sph(r,pm(pick(cols)),x+R(-spread,spread),y+R(0,r),z+R(-spread*.5,spread*.5),g); };
+  const person=(outfit,cols,x,z,rot,pose='stand',parent=M,y=0)=>{ const P=buildPerson(lookToBuild({outfit,color:pick(cols)})); applyPose(P,{},0,0,100,pose,0); place(P.root,x,z,rot,parent); P.root.position.y+=y; return P; };
+  const BABA=['#7b2d26','#2f4a6d','#4a5a3a','#6b4a7a','#8a6a3a'], MODERN=['#3a6ea5','#c8562e','#2e7d5b','#7a4ea0','#d9a13a','#555b66'];
+  // What each stall sells; goods sit on a table 0.8 m high and the vendor stands behind it.
+  const KIND={
+    pho:{label:'PHỞ',food:true,goods:g=>{ cyl(.28,.25,.45,steel,-.6,1.06,0,g,14); cyl(.29,.29,.03,steel,-.6,1.3,0,g,14); for (let i=0;i<4;i++) cyl(.1,.07,.06,white,.15+i*.24,.87,.2,g,10); pile(g,6,['#4e9a3a','#6cb04a'],.5,.88,-.2,.07,.25); }},
+    banhmi:{label:'BÁNH MÌ',food:true,goods:g=>{ box(1.3,.5,.6,pm('#cfe2ea'),.1,1.09,-.05,g); for (let i=0;i<6;i++) sph(1,pm('#d9a05b'),-.4+i*.2,1.38,-.05,g,.05,.05,.24); }},
+    che:{label:'CHÈ',food:true,goods:g=>{ const c=['#7cc26b','#b0473c','#f0d35a','#f5f1e6','#8a5a9a','#e98a3a']; for (let i=0;i<12;i++) cyl(.09,.09,.22,pm(c[i%6]),-.9+(i%6)*.36,.95,i<6?-.2:.2,g,10); }},
+    nuong:{label:'NƯỚNG',food:true,goods:g=>{ box(1.4,.18,.5,dark,0,.93,0,g); box(1.3,.03,.42,pm('#d8452a'),0,1.03,0,g); for (let i=0;i<9;i++) box(.04,.04,.5,pm('#9a4a22'),-.55+i*.14,1.07,0,g); }},
+    fruit:{label:'TRÁI CÂY',goods:g=>{ pile(g,10,['#f2c12e','#e8a020'],-.7,.9,0,.1,.25); pile(g,8,['#e0457b','#c93a6a'],0,.9,0,.11,.22); pile(g,10,['#f08a24','#7cb342'],.7,.9,0,.09,.25); }},
+    incense:{label:'NHANG ĐÈN',goods:g=>{ for (let i=0;i<5;i++) cyl(.06,.06,.42,pm(i%2?'#c8322a':'#e0a030'),-.9+i*.2,1.05,-.15,g,8); for (let i=0;i<8;i++) cyl(.04,.04,.18,red,.1+(i%4)*.16,.93,i<4?-.15:.15,g,8); for (let i=0;i<3;i++) box(.32,.1,.22,gold,-.7+i*.36,.89,.25,g); }},
+    flowers:{label:'HOA TƯƠI',goods:g=>{ const c=['#f39a1c','#f2d23a','#f2a2b8','#f7f3ea','#d8452a']; for (let i=0;i<5;i++){ cyl(.17,.13,.3,pm('#5a6b7a'),-.9+i*.45,.99,0,g,10); pile(g,7,[c[i]],-.9+i*.45,1.18,0,.08,.13); } for (const sx of [-1,1]){ cyl(.2,.16,.4,pm('#5a6b7a'),sx*.9,.2,.85,g,10); pile(g,8,[pick(c)],sx*.9,.45,.85,.09,.15); } }},
+    offerings:{label:'ĐỒ CÚNG',goods:g=>{ for (let i=0;i<3;i++){ cyl(.28,.24,.05,gold,-.7+i*.7,.86,0,g,14); pile(g,7,['#f2c12e','#7cb342','#e0457b','#f08a24'],-.7+i*.7,.92,0,.08,.12); } for (let i=0;i<4;i++) box(.3,.05,.2,pm(i%2?'#e5b53c':'#c8322a'),-.9+i*.6,.87,.32,g); }},
+  };
+  function stall(x,z,rot,kind){ const g=place(new THREE.Group(),x,z,rot), col=pick(['#c8322a','#2f6db3','#e0a82e','#3d8a4f','#d9572b']);
+    box(2.4,.08,1,wood,0,.8,0,g); for (const sx of [-1,1]) for (const sz of [-1,1]){ box(.07,.8,.07,wood,sx*1.12,.4,sz*.44,g); cyl(.03,.03,2.4,steel,sx*1.4,1.2,sz*.8,g,6); }
+    const roof=box(3,.06,1.9,pm(col),0,2.4,0,g); roof.rotation.x=-.08; box(3,.25,.03,pm(col),0,2.28,.96,g);
+    const s=add(new THREE.Mesh(new THREE.PlaneGeometry(1.6,.4),signMat(KIND[kind].label,col)),g); s.position.set(0,2.0,.98);
+    KIND[kind].goods(g);
+    person('baba',BABA,0,-.85,0,'stand',g);
+    if (KIND[kind].food) for (const sx of [-.7,.7]){ box(.32,.3,.32,pm(pick(['#d33a2c','#2f6db3'])),sx,.15,1.6,g); if (rnd()<.75) person('modern',MODERN,sx,1.6,Math.PI,'sit',g,.18); }
+    obBox(x-1.6,x+1.6,z-1.1,z+1.1); }
+  function moto(x,z,rot){ const g=place(new THREE.Group(),x,z,rot), c=pm(pick(['#c8322a','#1f1f22','#2f6db3','#e8e4dc','#9aa0a8','#3d8a4f']));
+    for (const wx of [-.6,.6]){ const w=add(new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.1,14),dark),g); w.rotation.x=Math.PI/2; w.position.set(wx,.3,0); }
+    box(1,.32,.28,c,0,.62,0,g); const nose=box(.25,.6,.3,c,.6,.78,0,g); nose.rotation.z=-.25; box(.62,.1,.3,dark,-.15,.84,0,g);
+    box(.05,.05,.62,dark,.7,1.1,0,g); sph(.07,white,.78,.96,0,g); box(.3,.06,.2,steel,-.62,.55,0,g); }
+  function xichlo(x,z,rot){ const g=place(new THREE.Group(),x,z,rot), seat=pm('#c42a2a'), fringe=pm('#f2c230');
+    for (const sx of [-1,1]){ const w=add(new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.06,16),steel),g); w.rotation.z=Math.PI/2; w.position.set(sx*.5,.32,.45); }
+    const rw=add(new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.06,16),steel),g); rw.rotation.z=Math.PI/2; rw.position.set(0,.34,-1.05);
+    box(.85,.28,.65,steel,0,.42,.45,g); box(.8,.14,.55,seat,0,.62,.42,g); const back=box(.8,.6,.12,seat,0,.92,.14,g); back.rotation.x=-.2;
+    for (const sx of [-1,1]) box(.06,.22,.5,steel,sx*.43,.76,.45,g);
+    box(.7,.04,.35,steel,0,.24,.95,g);
+    const cnp=box(.95,.04,.8,seat,0,1.5,.42,g); cnp.rotation.x=.1; box(.95,.1,.02,fringe,0,1.42,.83,g);
+    for (const sx of [-1,1]){ box(.02,.1,.8,fringe,sx*.48,1.44,.42,g); cyl(.015,.015,.9,steel,sx*.42,1.05,.1,g,6); }
+    box(.06,.06,1.1,steel,0,.62,-.5,g); box(.25,.07,.12,dark,0,1.05,-.62,g); cyl(.02,.02,.5,steel,0,.82,-.62,g,6); box(.55,.04,.04,steel,0,1.08,-.1,g); }
+  // Paved market street, with a walkway across to the front path.
+  const st=add(new THREE.Mesh(new THREE.PlaneGeometry(40,9),MAT.slab),M,false,true); st.rotation.x=-Math.PI/2; st.position.set(-40,.03,48);
+  const wk=add(new THREE.Mesh(new THREE.PlaneGeometry(16,3),MAT.slab),M,false,true); wk.rotation.x=-Math.PI/2; wk.position.set(-12.5,.03,48);
+  const rowA=['pho','banhmi','incense','che','flowers','nuong'], rowB=['fruit','offerings','pho','incense','flowers','che'];
+  for (let i=0;i<6;i++){ stall(-56+i*6,43,0,rowA[i]); stall(-56+i*6,53,Math.PI,rowB[i]); MARKET_STALLS.push({slot:i,x:-56+i*6,z:44.7},{slot:6+i,x:-56+i*6,z:51.3}); }   // x,z: where a customer stands
+  for (let i=0;i<9;i++) person(pick(['modern','modern','aodai','baba']),MODERN,R(-57,-23),R(46.3,49.7),R(0,Math.PI*2));   // shoppers in the street
+  for (const [z0,z1] of [[38,45.5],[50.5,60]]) for (const x of [-12.5,-16.5]){ for (let z=z0;z<=z1;z+=1.05) moto(x,z,Math.PI+R(-.18,.18)); obBox(x-1,x+1,z0-.5,z1+.5); }
+  for (let i=0;i<6;i++){ xichlo(-52+i*2.4,35.5,0); if (i%2===0) person('modern',['#4a5a3a','#2f4a6d','#6b5a3a'],-52+i*2.4,35.9,0,'sit',M,.55); }   // drivers resting in their own seats
+  obBox(-53.5,-38.5,34,37);
+  mergeStatic(M);
+})();
+
 /* ================= computer-run visitors on a shared timetable =================
    Every monk, visitor, kid and the dog follows a plan worked out from (world seed, their
    number, time slot). In a live courtyard the seed and clock come from the server, so every
@@ -1145,7 +1142,8 @@ const endDrag=()=>{ drag=null; canvas.style.cursor='grab'; }; canvas.addEventLis
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); if (mode==='pov'){ if (e.deltaY>0) exitPOV(); return; } camDist=clamp(camDist+e.deltaY*.02,5,60); if (camDist<6.5&&me.entered) enterPOV(); },{passive:false});
 function setFov(f,near){ camera.fov=f; camera.near=near; camera.updateProjectionMatrix(); resize(); }
 function enterPOV(){ if (!me.entered||mode==='pov') return; me.prevDist=camDist; mode='pov'; povPitch=.1; setFov(64,.08); me.P.root.visible=false; toast(tr('eyeView')); }
-function exitPOV(){ if (mode!=='pov') return; me.autoPOV=false; mode='third'; camDist=Math.max(18,me.prevDist||26); setFov(40,.5); me.P.root.visible=true; }
+// The third-person camera sits behind the way you were facing, so W keeps walking you the same way (out of a hall, not back in).
+function exitPOV(){ if (mode!=='pov') return; me.autoPOV=false; mode='third'; camYaw=me.heading+Math.PI; camDist=Math.max(18,me.prevDist||26); setFov(40,.5); me.P.root.visible=true; }
 $('#keys').addEventListener('click',e=>{ const b=e.target.closest('button'); if (b) act(b.dataset.k); });
 
 /* ================= UI wiring ================= */
@@ -1163,12 +1161,13 @@ $('#crowd').addEventListener('input',applyCrowd);
 function setSmoke(v){ smokeLevel=v; smoke.visible=v>0; for (const b of $('#smokeSeg').children) b.setAttribute('aria-checked',String(+b.dataset.v===v)); if (v===0){ sAge.fill(99); sAlpha.fill(0); } try { localStorage.setItem('antam-smoke',String(v)); } catch(e){} }
 $('#smokeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if (b) setSmoke(+b.dataset.v); });
 setSmoke(smokeLevel);
-$('#soundBtn').addEventListener('click',()=>{ if (!AC){ initAudio(); muted=false; } else { muted=!muted; applyVolumes(); } $('#soundBtn').textContent=tr(muted?'soundOff':'soundOn'); });
+// Sound is always on: start it on the first touch or key, since browsers block audio until then.
+for (const ev of ['pointerdown','keydown']) addEventListener(ev,()=>{ if (!AC){ initAudio(); applyVolumes(); } },{once:true});
 const sw=$('#swatches');
 function drawSwatches(){ sw.innerHTML=''; for (const c of OUTFIT_COLORS[me.outfit]){ const b=document.createElement('button'); b.type='button'; b.style.background=c; b.setAttribute('aria-label','Colour '+c); b.setAttribute('aria-pressed',String(c===me.color)); b.onclick=()=>{ me.color=c; drawSwatches(); rebuildPlayer(); }; sw.appendChild(b); } }
 $('#outfits').addEventListener('click',e=>{ const b=e.target.closest('button'); if (!b) return; me.outfit=b.dataset.o; me.color=OUTFIT_COLORS[me.outfit][0]; for (const x of $('#outfits').children) x.setAttribute('aria-pressed',String(x===b)); drawSwatches(); rebuildPlayer(); });
 drawSwatches();
-$('#enterBtn').addEventListener('click',async()=>{
+$('#entry').addEventListener('submit',async e=>{ e.preventDefault();
   const raw=($('#name').value.trim()||'Khách').slice(0,18);
   $('#enterBtn').disabled=true; $('#nameErr').hidden=true;
   const ses=await startSession(raw);
@@ -1533,8 +1532,6 @@ $('#reduceMotion').addEventListener('change',e=>{ reduceMotion=e.target.checked;
 function refreshLangDynamic(){
   for (const b of $('#langSeg').children) b.setAttribute('aria-checked',String(b.dataset.v===getLang()));
   if (me.entered) $('#hello').textContent=tr('welcome',{name:me.name});
-  $('#soundBtn').textContent=tr(AC&&!muted?'soundOn':'soundOff');
-  $('#moveHelp').textContent=tr(IS_TOUCH?'moveHelpTouch':'moveHelp');
   renderBless(); net.h.status(net.state); layoutHud();
 }
 $('#langSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if (!b) return; setLang(b.dataset.v); refreshLangDynamic(); });
@@ -1569,7 +1566,7 @@ async function startSession(name){
 }
 function afterEnter(){
   track('visit');
-  if (IS_TOUCH){ joyEl.hidden=false; $('#legendBox').open=false; }
+  if (IS_TOUCH) joyEl.hidden=false;
   refreshLangDynamic(); layoutHud(); setTimeout(layoutHud,300);
   if (CFG.realtime) net.start({name:me.name,token:me.token,look:{outfit:me.outfit,color:me.color},invite:INVITE});
 }
@@ -1583,6 +1580,33 @@ function initFeatures(){
   if (new URLSearchParams(location.search).has('debug')) window.__temple={me,act,net,remotes,BUILDINGS,setHour,CANDLE_POS,WISH_POS,FORTUNE_POS,openHalls,agents,npcState,dogState,clockNow:()=>WORLD_CLOCK.now(),farCount:()=>farGeo.drawRange.count,renderInfo:()=>{ renderer.info.autoReset=false; renderer.info.reset(); renderer.setRenderTarget(rt); renderer.render(scene,camera); renderer.setRenderTarget(null); const i=renderer.info; const r={calls:i.render.calls,triangles:i.render.triangles,geometries:i.memory.geometries,textures:i.memory.textures,programs:i.programs.length}; renderer.info.autoReset=true; return r; },enterPOV};
 }
 
+/* Arrivals on the entry screen: who came in and how long ago, newest at the bottom pushing older names up. */
+const arrivalsEl=$('#arrivals'), arrivalsSeen=new Set();
+function ago(s){ const rtf=new Intl.RelativeTimeFormat(getLang(),{numeric:'auto'}); for (const [u,n] of [['day',86400],['hour',3600],['minute',60]]) if (s>=n) return rtf.format(-Math.floor(s/n),u); return rtf.format(0,'second'); }
+async function loadArrivals(){ if (me.entered) return;
+  try { const r=await fetch('api/arrivals.php',{cache:'no-store'}); if (!r.ok) return; const list=(await r.json()).arrivals.reverse(), first=!arrivalsSeen.size;
+    arrivalsEl.replaceChildren(...list.map(a=>{ const key=a.name+'|'+Math.round((Date.now()/1000-a.ago)/30), li=document.createElement('li'), b=document.createElement('b');
+      if (!first&&!arrivalsSeen.has(key)) li.className='new'; arrivalsSeen.add(key); b.textContent=a.name; li.append(b,` ${tr('arrived')} · ${ago(a.ago)}`); return li; }));
+  } catch(e){ /* the list is a nicety; the page works without it */ } }
+loadArrivals(); setInterval(loadArrivals,20000);
+
+/* Market stalls for rent: walking up to one opens its shop card, or offers it when nobody rents it. */
+let STALL_INFO=[], STALL_PRICE=50000, stallNear=null;
+async function loadStalls(){ try { const r=await fetch('api/stalls.php'); if (!r.ok) return; const j=await r.json(); STALL_INFO=j.stalls||[]; STALL_PRICE=j.price||STALL_PRICE; } catch(e){ /* stalls stay quiet */ } }
+loadStalls(); setInterval(loadStalls,60000);
+const vnd=n=>new Intl.NumberFormat('vi-VN').format(n)+' đ';
+function stallCard(s){ let host=''; try { host=s.url?new URL(s.url).host:''; } catch(e){}
+  return `<div class="stall-card">${s.logo?`<img src="${esc(s.logo)}" alt="" width="96" height="96">`:''}${host?`<a href="${esc(s.url)}" target="_blank" rel="noopener nofollow ugc">${esc(tr('stallVisit'))} · ${esc(host)}</a>`:''}</div>`
+    +(s.menu&&s.menu.length?`<h4>${esc(tr('stallMenu'))}</h4><ul class="list">${s.menu.map(m=>`<li><span>${esc(m.n)}</span> <b>${vnd(m.p)}</b></li>`).join('')}</ul>`:''); }
+function nearStall(){ let near=null; for (const s of MARKET_STALLS) if (Math.hypot(me.pos.x-s.x,me.pos.z-s.z)<2.4) near=s;
+  if (near===stallNear) return; stallNear=near; if (!near||!modal.hidden) return;
+  const info=STALL_INFO.find(x=>x.slot===near.slot)||{state:'free'};
+  if (info.state==='free'){ toast(tr('stallFreeSay'),4);
+    openModal(tr('stallFreeTitle'),`<p>${esc(tr('stallFreeText',{price:vnd(STALL_PRICE)}))}</p><div class="actions"><a class="btn" href="vendor/?slot=${near.slot}" target="_blank" rel="noopener">${esc(tr('stallRent'))}</a><button type="button" class="btn ghost" id="stallNo">${esc(tr('stallNo'))}</button></div>`);
+    $('#stallNo').onclick=closeModal; }
+  else if (info.state==='held') toast(tr('stallHeld'),4);
+  else if (info.state==='rented'&&info.name) openModal(info.name,stallCard(info)); }
+
 /* ================= main loop ================= */
 const clock=new THREE.Clock(); let T=0, stepT=0, birdT=2, frogT=3, beatT=0, beatI=0, onlineT=0, idleBellT=18, lastInside=null;
 const camTarget=V3(0,2,4), v3=new THREE.Vector3(), MELODY=[98,98,110,98,87.3,98,110,123.5];
@@ -1590,6 +1614,10 @@ for (const b of BUILDINGS) b.label=makeLabel(b.title,'place');
 const PRAYPOSES=['pray','kneel','prostrate'];
 function frame(){
   const dt=Math.min(clock.getDelta(),.05); T+=dt;
+  if (!reduceMotion) for (const m of AURAS) m.rotation.z+=dt*m.userData.spin;
+  GATE.visible=!(me.entered&&me.pos.z<21);
+  if (me.entered) nearStall();
+  MAT.rays.opacity=.55+.2*Math.sin(T*1.2);
   if (liveEl.checked && Math.floor(T*2)!==Math.floor((T-dt)*2)){ const d=new Date(); setHour(d.getHours()+d.getMinutes()/60); }
   bellReward-=dt; dogReward-=dt;
   const inside=me.entered?insideOf(me.pos.x,me.pos.z):null;
@@ -1601,8 +1629,8 @@ function frame(){
     if (mode==='pov'){ if (W) fz-=1; if (S) fz+=1; if (A) fx-=1; if (D) fx+=1; if (keys.ArrowLeft||keys.KeyQ) turn+=1; if (keys.ArrowRight||keys.KeyE) turn-=1;
       if (drag&&drag.type!=='mouse'){ const dx=drag.x-drag.x0, dy=drag.y-drag.y0; turn-=clamp(dx/120,-1,1); if (Math.abs(dy)>20) fz+=clamp(dy/90,-1,1); }
       if (joy.active){ turn-=joy.x; fz+=joy.y; }
-      me.heading+=turn*dt*1.8; }
-    else { if (W) fz-=1; if (S) fz+=1; if (A||keys.ArrowLeft) fx-=1; if (D||keys.ArrowRight) fx+=1; if (keys.KeyQ) camYaw+=dt*1.4; if (keys.KeyE) camYaw-=dt*1.4;
+      me.heading+=turn*dt*.9; }
+    else { if (W) fz-=1; if (S) fz+=1; if (A||keys.ArrowLeft) fx-=1; if (D||keys.ArrowRight) fx+=1; if (keys.KeyQ) camYaw+=dt*.7; if (keys.KeyE) camYaw-=dt*.7;
       if (drag&&!IS_TOUCH){ const dx=drag.x-innerWidth/2, dy=drag.y-innerHeight*.58, l=Math.hypot(dx,dy); if (l>30){ fx+=dx/l; fz+=dy/l; } } if (joy.active){ fx+=joy.x; fz+=joy.y; } }
     const l=Math.hypot(fx,fz); let moving=false;
     if (l>.01){

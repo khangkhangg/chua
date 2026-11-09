@@ -47,6 +47,11 @@ if ($in && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do'])) {
         'ban_name' => $pdo->prepare("INSERT IGNORE INTO bans (kind, value, reason, created_at) VALUES ('name', ?, ?, ?)")->execute([mb_strtolower(trim((string) $_POST['value'])), (string) ($_POST['reason'] ?? ''), Db::now()]),
         'ban_ip' => $pdo->prepare("INSERT IGNORE INTO bans (kind, value, reason, created_at) VALUES ('ip', ?, ?, ?)")->execute([(string) $_POST['value'], (string) ($_POST['reason'] ?? ''), Db::now()]),
         'unban' => $pdo->prepare('DELETE FROM bans WHERE id = ?')->execute([$id]),
+        'stall_takedown' => Chua\Stalls::takeDown($id, (string) ($_POST['reason'] ?? '')),
+        'stall_restore' => Chua\Stalls::restore($id),
+        'stall_free' => Chua\Stalls::free($id),
+        'rental_approve' => Chua\Stalls::decide((string) ($_POST['token'] ?? ''), true),
+        'rental_notyet' => Chua\Stalls::decide((string) ($_POST['token'] ?? ''), false),
         default => null,
     };
     header('Location: ./?tab=' . urlencode((string) ($_POST['tab'] ?? 'overview')));
@@ -100,7 +105,7 @@ button{cursor:pointer}
 <?php else: ?>
 <h1><?= $e($config['temple_name']) ?> · admin <a href="?logout=1" style="float:right;color:var(--muted);font-size:13px">Sign out</a></h1>
 <nav>
-<?php foreach (['overview' => 'Overview', 'reports' => 'Reports', 'wishes' => 'Wishes', 'chat' => 'Chat log', 'candles' => 'Candles', 'bans' => 'Bans'] as $k => $label): ?>
+<?php foreach (['overview' => 'Overview', 'reports' => 'Reports', 'wishes' => 'Wishes', 'chat' => 'Chat log', 'candles' => 'Candles', 'stalls' => 'Stalls', 'rentals' => 'Stall rentals', 'bans' => 'Bans'] as $k => $label): ?>
 <a href="?tab=<?= $k ?>" class="<?= $tab === $k ? 'on' : '' ?>"><?= $label ?></a>
 <?php endforeach; ?>
 </nav>
@@ -164,6 +169,33 @@ button{cursor:pointer}
 <div class="wrap"><table><thead><tr><th>Kind</th><th>Value</th><th>Reason</th><th>Since</th><th></th></tr></thead><tbody>
 <?php foreach ($rows as $r): ?><tr><td><?= $e($r['kind']) ?></td><td><?= $e($r['kind'] === 'ip' ? substr($r['value'], 0, 12) . '…' : $r['value']) ?></td><td><?= $e($r['reason']) ?></td><td><?= $e($r['created_at']) ?></td><td><?= $form('unban', ['id' => $r['id']], 'Remove', $tab) ?></td></tr><?php endforeach; ?>
 <?php if (!$rows): ?><tr><td colspan="5">No bans.</td></tr><?php endif; ?>
+</tbody></table></div>
+<?php elseif ($tab === 'stalls'):
+  $rows = $pdo->query('SELECT s.*, v.email FROM stalls s LEFT JOIN vendors v ON v.id = s.vendor_id ORDER BY s.slot')->fetchAll(); ?>
+<p style="color:var(--muted)">Take a stall down when it breaks the <a href="../vendor/policy.php" style="color:var(--gold)">stall policy</a>; the renter gets an email with your reason. Free ends the rental and clears the shop.</p>
+<div class="wrap"><table><thead><tr><th>Stall</th><th>State</th><th>Renter</th><th>Paid until (UTC)</th><th>Shop</th><th></th></tr></thead><tbody>
+<?php foreach ($rows as $r): $state = Chua\Stalls::state($r); ?><tr>
+  <td><?= $e(Chua\Stalls::label((int) $r['slot'])) ?></td>
+  <td><span class="pill <?= $state === 'closed' ? 'open' : '' ?>"><?= $e($state) ?></span></td>
+  <td><?= $e($r['email'] ?? '') ?></td><td><?= $e($r['paid_until'] ?? '') ?></td>
+  <td><?= $e($r['shop_name'] ?? '') ?><?php if ($r['url']): ?><br><small><?= $e($r['url']) ?></small><?php endif; ?><?php if ($r['takedown_reason']): ?><br><small>Taken down: <?= $e($r['takedown_reason']) ?></small><?php endif; ?></td>
+  <td><?php if ($r['vendor_id'] !== null): ?>
+    <?= $state === 'closed' ? $form('stall_restore', ['id' => $r['slot']], 'Restore', $tab)
+      : '<form method="post" class="inline"><input type="hidden" name="csrf" value="' . $e($csrf) . '"><input type="hidden" name="do" value="stall_takedown"><input type="hidden" name="tab" value="stalls"><input type="hidden" name="id" value="' . (int) $r['slot'] . '"><input name="reason" placeholder="Reason" required aria-label="Reason"> <button>Take down</button></form>' ?>
+    <?= $form('stall_free', ['id' => $r['slot']], 'Free', $tab) ?>
+  <?php endif; ?></td>
+</tr><?php endforeach; ?>
+</tbody></table></div>
+<?php elseif ($tab === 'rentals'):
+  $rows = $pdo->query("SELECT r.*, v.email FROM stall_rentals r JOIN vendors v ON v.id = r.vendor_id ORDER BY r.status = 'claimed' DESC, r.id DESC LIMIT 200")->fetchAll(); ?>
+<div class="wrap"><table><thead><tr><th>Created (UTC)</th><th>Stall</th><th>Email</th><th>Months</th><th>Amount</th><th>Memo</th><th>Status</th><th></th></tr></thead><tbody>
+<?php foreach ($rows as $r): ?><tr>
+  <td><?= $e($r['created_at']) ?></td><td><?= $e(Chua\Stalls::label((int) $r['slot'])) ?></td><td><?= $e($r['email']) ?></td>
+  <td><?= (int) $r['months'] ?></td><td><?= number_format((int) $r['amount'], 0, ',', '.') ?> đ</td><td><?= $e($r['code']) ?></td>
+  <td><span class="pill <?= $r['status'] === 'claimed' ? 'pending' : '' ?>"><?= $e($r['status']) ?></span></td>
+  <td><?php if ($r['status'] === 'claimed' && $r['decide_token']): ?><?= $form('rental_approve', ['token' => $r['decide_token']], 'Approve', $tab) ?> <?= $form('rental_notyet', ['token' => $r['decide_token']], 'Not yet', $tab) ?><?php endif; ?></td>
+</tr><?php endforeach; ?>
+<?php if (!$rows): ?><tr><td colspan="8">No stall rentals yet.</td></tr><?php endif; ?>
 </tbody></table></div>
 <?php endif; ?>
 <?php endif; ?>

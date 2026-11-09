@@ -34,23 +34,18 @@ $v = $e($config['asset_version']);
 <canvas id="scene" aria-label="Temple courtyard"></canvas>
 <div id="labels"></div>
 
-<header class="hud tl">
+<header class="tl">
   <div class="seal" aria-hidden="true">An<br>Tâm</div>
-  <div>
-    <h1><?= $e($config['temple_name']) ?></h1>
-    <p class="sub" data-i18n="sub">Chùa trên núi · open day and night</p>
-    <div class="stats">
-      <span><span class="dot"></span><b id="online">–</b> <span data-i18n="visiting">visiting</span></span>
-      <span><b id="here">0</b> <span data-i18n="here">in this courtyard</span></span>
-      <span><span data-i18n="incenseToday">Incense today</span> <b id="incense">0</b></span>
-    </div>
-    <div class="merit">
-      <span class="chip" title="Bodhi leaves"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-4 4-7 8-7 12a7 7 0 0 0 6 6.9V23h2v-2.1A7 7 0 0 0 19 14c0-4-3-8-7-12z" fill="#7fb85a"/><path d="M12 6v14" stroke="#2f5a22" stroke-width="1.4"/></svg><b id="leaves">0</b> <span data-i18n="leaves">lá bồ đề</span></span>
-      <button type="button" class="chip" id="bagBtn" aria-expanded="false" aria-controls="bag"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5" fill="#c2412b"/><rect x="2" y="6" width="20" height="4" rx="1" fill="#d9aa4a"/><path d="M12 6v15" stroke="#d9aa4a" stroke-width="2"/></svg><b id="giftCount">0</b> <span data-i18n="gifts">gifts</span></button>
-      <button type="button" class="chip" id="inviteBtn" hidden><span data-i18n="invite">Invite friends</span></button>
-    </div>
-    <p class="live" id="liveStatus" hidden></p>
+  <h1><?= $e($config['temple_name']) ?></h1>
+  <div class="stats">
+    <span data-i18n-title="visiting"><svg viewBox="0 0 24 24" aria-hidden="true" style="color:#5fae94"><circle cx="12" cy="7" r="4" fill="currentColor"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" fill="currentColor"/></svg><b id="online">–</b> <span class="sr" data-i18n="visiting">visiting</span></span>
+    <span data-i18n-title="here"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2" fill="currentColor"/><circle cx="16.5" cy="9" r="2.7" fill="currentColor" opacity=".7"/><path d="M2 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6z" fill="currentColor"/><path d="M15.5 14.2c3.6-.4 6.5 1.6 6.5 5.8h-5.5c0-2.3-.4-4.2-1-5.8z" fill="currentColor" opacity=".7"/></svg><b id="here">0</b> <span class="sr" data-i18n="here">in this courtyard</span></span>
+    <span data-i18n-title="incenseToday"><svg viewBox="0 0 24 24" aria-hidden="true" style="color:#d9aa4a"><path d="M8 22V11M12 22V9M16 22V11" stroke="#c2412b" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.5c-1.6-1.4 1.6-2.4 0-4.5M8 8.5c-1.2-1 1.2-1.8 0-3.3M16 8.5c-1.2-1 1.2-1.8 0-3.3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg><b id="incense">0</b> <span class="sr" data-i18n="incenseToday">Incense today</span></span>
+    <span data-i18n-title="leaves"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-4 4-7 8-7 12a7 7 0 0 0 6 6.9V23h2v-2.1A7 7 0 0 0 19 14c0-4-3-8-7-12z" fill="#7fb85a"/><path d="M12 6v14" stroke="#2f5a22" stroke-width="1.4"/></svg><b id="leaves">0</b> <span class="sr" data-i18n="leaves">lá bồ đề</span></span>
+    <button type="button" class="icon" id="bagBtn" aria-expanded="false" aria-controls="bag" data-i18n-title="gifts"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5" fill="#c2412b"/><rect x="2" y="6" width="20" height="4" rx="1" fill="#d9aa4a"/><path d="M12 6v15" stroke="#d9aa4a" stroke-width="2"/></svg><b id="giftCount">0</b> <span class="sr" data-i18n="gifts">gifts</span></button>
+    <button type="button" class="icon" id="inviteBtn" hidden data-i18n-title="invite"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4" fill="currentColor"/><path d="M1.5 21c0-4.4 3.4-7 7.5-7s7.5 2.6 7.5 7z" fill="currentColor"/><path d="M19.5 7v7M16 10.5h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr" data-i18n="invite">Invite friends</span></button>
   </div>
+  <p class="live sr" id="liveStatus" hidden></p>
 </header>
 
 <section class="hud" id="bag" hidden aria-label="Temple gifts">
@@ -59,7 +54,7 @@ $v = $e($config['asset_version']);
   <ul id="giftList"></ul>
 </section>
 
-<details class="hud tr" open id="settings">
+<details class="hud tr" id="settings">
   <summary data-i18n="scene">Scene</summary>
   <div class="ctl">
     <div class="row">
@@ -107,15 +102,17 @@ $v = $e($config['asset_version']);
         <button type="button" role="radio" data-v="en" aria-checked="false">English</button>
       </div>
     </div>
-    <button class="btn ghost" id="soundBtn" type="button" data-i18n="soundOff">Sound: off</button>
   </div>
 </details>
 
-<section class="hud bl" id="entry">
+<form class="hud bl" id="entry">
   <h2 data-i18n="enterTitle">Enter the temple</h2>
   <div class="field">
     <label for="name" data-i18n="yourName">Your name</label>
-    <input type="text" id="name" maxlength="18" placeholder="Linh" autocomplete="off">
+    <div class="name-row">
+      <input type="text" id="name" maxlength="18" placeholder="Linh" autocomplete="off">
+      <button class="btn" id="enterBtn" type="submit" data-i18n="walkIn">Enter</button>
+    </div>
     <p class="err" id="nameErr" hidden></p>
   </div>
   <div class="field">
@@ -131,12 +128,10 @@ $v = $e($config['asset_version']);
     <label data-i18n="colour">Colour</label>
     <div class="swatches" id="swatches"></div>
   </div>
-  <button class="btn" id="enterBtn" type="button" data-i18n="walkIn">Walk in · sound on</button>
-</section>
+</form>
 
-<section class="hud bl" id="legend" hidden>
-  <details id="legendBox" open>
-    <summary><h2 id="hello">Welcome</h2></summary>
+<section class="hud" id="legend" hidden>
+  <h2 id="hello" class="sr">Welcome</h2>
     <div class="keys" id="keys">
       <button type="button" data-k="Digit1"><kbd>1</kbd><span data-i18n="kStand">Stand</span></button>
       <button type="button" data-k="Digit2"><kbd>2</kbd>Chắp tay</button>
@@ -144,19 +139,17 @@ $v = $e($config['asset_version']);
       <button type="button" data-k="Digit4"><kbd>4</kbd><span data-i18n="kKneel">Quỳ</span></button>
       <button type="button" data-k="Digit5"><kbd>5</kbd>Lạy</button>
       <button type="button" data-k="Digit6"><kbd>6</kbd><span data-i18n="kSit">Thiền</span></button>
-      <button type="button" data-k="KeyF"><kbd>F</kbd><span data-i18n="kIncense">Incense</span></button>
-      <button type="button" data-k="KeyB"><kbd>B</kbd><span data-i18n="kBell">Ring bell</span></button>
+      <button type="button" data-k="KeyF" data-i18n-title="kIncense"><kbd>F</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 22V11M12 22V9M16 22V11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.5c-1.6-1.4 1.6-2.4 0-4.5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg><span class="sr" data-i18n="kIncense">Incense</span></button>
+      <button type="button" data-k="KeyB" data-i18n-title="kBell"><kbd>B</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17v-6a6 6 0 0 1 12 0v6l1.5 2h-15z" fill="currentColor"/><circle cx="12" cy="21" r="1.6" fill="currentColor"/><path d="M12 3v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr" data-i18n="kBell">Ring bell</span></button>
       <button type="button" data-k="KeyG"><kbd>G</kbd><span data-i18n="kHelp">Help out</span></button>
-      <button type="button" data-k="KeyC"><kbd>C</kbd><span data-i18n="kCandle">Candle</span></button>
+      <button type="button" data-k="KeyC" data-i18n-title="kCandle"><kbd>C</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="10" width="7" height="12" rx="1" fill="currentColor"/><path d="M12 2c2 2.5 2.2 4.2 0 6-2.2-1.8-2-3.5 0-6z" fill="#e8913a"/></svg><span class="sr" data-i18n="kCandle">Candle</span></button>
       <button type="button" data-k="KeyT"><kbd>T</kbd><span data-i18n="kWish">Wish</span></button>
       <button type="button" data-k="KeyX"><kbd>X</kbd><span data-i18n="kFortune">Xin xăm</span></button>
-      <button type="button" data-k="KeyH"><kbd>H</kbd><span data-i18n="kHalls">Halls</span></button>
-      <button type="button" data-k="Enter"><kbd>↵</kbd><span data-i18n="kChat">Chat</span></button>
-      <button type="button" data-k="KeyV"><kbd>V</kbd><span data-i18n="kEye">Eye view</span></button>
-      <button type="button" data-k="KeyN"><kbd>N</kbd><span data-i18n="kDay">Day / night</span></button>
+      <button type="button" data-k="KeyH" data-i18n-title="kHalls"><kbd>H</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9l10-6 10 6h-2.5l1.5 2H3l1.5-2z" fill="currentColor"/><path d="M5 12h14v9H5z" fill="currentColor" opacity=".55"/><path d="M10 21v-5h4v5z" fill="currentColor"/></svg><span class="sr" data-i18n="kHalls">Halls</span></button>
+      <button type="button" data-k="Enter" data-i18n-title="kChat"><kbd>↵</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-5 4v-4H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" fill="currentColor"/></svg><span class="sr" data-i18n="kChat">Chat</span></button>
+      <button type="button" data-k="KeyV" data-i18n-title="kEye"><kbd>V</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg><span class="sr" data-i18n="kEye">Eye view</span></button>
+      <button type="button" data-k="KeyN" data-i18n-title="kDay"><kbd>N</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg><span class="sr" data-i18n="kDay">Day / night</span></button>
     </div>
-    <p class="move" id="moveHelp" data-i18n="moveHelp"></p>
-  </details>
 </section>
 
 <form id="chatbar" class="hud" hidden>
@@ -172,11 +165,11 @@ $v = $e($config['asset_version']);
   <div id="modalBody"></div>
 </div>
 
+<ol class="arrivals" id="arrivals" aria-label="Khách vừa vào chùa"></ol>
 <div id="toast" data-off></div>
 <div id="reward" aria-live="polite"></div>
 
 <script>window.CHUA = <?= json_encode($client, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"}}</script>
 <script type="module" src="js/temple.js?v=<?= $v ?>"></script>
 </body>
 </html>

@@ -12,4 +12,8 @@ return [
         'payos_checksum_key' => 'payos-test-key', 'test_mode' => true,
     ],
     'admin' => ['password_hash' => password_hash('admin-test', PASSWORD_DEFAULT)],
+    'base_url' => 'https://chua.test',
+    'notify_fake' => true,
+    'stalls' => ['price_month' => 50000, 'remind_days' => 3, 'hold_minutes' => 30],
+    'uploads_dir' => sys_get_temp_dir() . '/chua-test-uploads',
 ];

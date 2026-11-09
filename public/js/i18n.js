@@ -9,12 +9,9 @@ const S = {
     scene: 'Scene', time: 'Time of day', followClock: 'Follow my clock', pixel: 'Pixel size', visitors: 'Visitors', smoke: 'Incense smoke',
     smokeOff: 'Off', smokeLittle: 'A little', smokeFull: 'Full', quality: 'Graphics', qAuto: 'Auto', qLow: 'Low', qHigh: 'High',
     volume: 'Volume', volAll: 'All sound', volNature: 'Nature', volTemple: 'Bells and chanting', reduceMotion: 'Reduce motion', language: 'Language',
-    soundOn: 'Sound: on', soundOff: 'Sound: off',
-    enterTitle: 'Enter the temple', yourName: 'Your name', clothing: 'Clothing', colour: 'Colour', everyday: 'Everyday', walkIn: 'Walk in · sound on',
+    enterTitle: 'Enter the temple', yourName: 'Your name', clothing: 'Clothing', colour: 'Colour', everyday: 'Everyday', walkIn: 'Enter',
     welcome: 'Welcome, {name}', kStand: 'Stand', kBow: 'Xá (bow)', kKneel: 'Quỳ (kneel)', kSit: 'Thiền (sit)', kIncense: 'Incense', kBell: 'Ring bell',
     kHelp: 'Help out', kEye: 'Eye view', kDay: 'Day / night', kChat: 'Chat', kHalls: 'Halls', kCandle: 'Candle', kWish: 'Wish', kFortune: 'Xin xăm',
-    moveHelp: 'WASD or arrows to walk. Q / E turn. Scroll in all the way for your own eye view. Walk up the stairs into any hall, then press 4 to kneel and pray.',
-    moveHelpTouch: 'Use the joystick to walk. Tap the buttons for actions. Pinch or use Eye view to look closer.',
     invite: 'Invite friends', inviteCopied: 'Invite link copied. Friends who open it join your courtyard.',
     alone: 'Visiting on your own', connecting: 'Connecting…', live: 'Live · {n} here',
     nameErr: 'Please choose another name: 2 to 18 letters, no rude words, not a monk or staff title.',
@@ -27,6 +24,10 @@ const S = {
     dogWag: 'The temple dog wags its tail.', lay: 'Lạy: kneeling bows. Press 1 to stand up.', eyeView: 'Eye view. Drag to look around, scroll out or press V to leave.',
     hallEnter: '{hall} · {deity}. Press 4 to kneel and pray.', allHalls: 'You have visited every hall. A Di Đà Phật.', giftGot: 'Nhà chùa tặng bạn: {gift}',
     bigBell: 'Đại hồng chung · the great bell rings for the {when}', morning: 'dawn', evening: 'evening',
+    arrived: 'came in',
+    stallFreeSay: 'Stall keeper: "This stall is free. Want to open a shop here?"', stallFreeTitle: 'This stall is free',
+    stallFreeText: 'Nobody rents this stall yet. Open your own shop here for {price} a month: your name, logo, website and menu for every visitor who walks by.',
+    stallRent: 'Rent this stall', stallNo: 'Not now', stallHeld: 'Someone is renting this stall right now.', stallVisit: 'Visit the shop', stallMenu: 'Menu',
     chatPlaceholder: 'Say something kind… (Enter to send)', chatSlow: 'Slow down a little.', mute: 'Mute', unmute: 'Unmute', report: 'Report',
     reported: 'Thank you. The temple will look at this.', reportWhy: 'What happened?',
     hallsTitle: 'Go to a hall', hallsText: 'Walk there yourself, or go straight to the hall door.',
@@ -53,12 +54,9 @@ const S = {
     scene: 'Cảnh', time: 'Giờ trong ngày', followClock: 'Theo giờ của tôi', pixel: 'Cỡ điểm ảnh', visitors: 'Khách viếng', smoke: 'Khói nhang',
     smokeOff: 'Tắt', smokeLittle: 'Một chút', smokeFull: 'Đầy đủ', quality: 'Đồ họa', qAuto: 'Tự động', qLow: 'Thấp', qHigh: 'Cao',
     volume: 'Âm lượng', volAll: 'Tất cả', volNature: 'Thiên nhiên', volTemple: 'Chuông và tụng kinh', reduceMotion: 'Giảm chuyển động', language: 'Ngôn ngữ',
-    soundOn: 'Âm thanh: bật', soundOff: 'Âm thanh: tắt',
-    enterTitle: 'Vào chùa', yourName: 'Tên của bạn', clothing: 'Trang phục', colour: 'Màu', everyday: 'Thường ngày', walkIn: 'Vào chùa · bật âm thanh',
+    enterTitle: 'Vào chùa', yourName: 'Tên của bạn', clothing: 'Trang phục', colour: 'Màu', everyday: 'Thường ngày', walkIn: 'Vào chùa',
     welcome: 'Chào {name}', kStand: 'Đứng', kBow: 'Xá', kKneel: 'Quỳ', kSit: 'Thiền', kIncense: 'Thắp nhang', kBell: 'Thỉnh chuông',
     kHelp: 'Giúp chùa', kEye: 'Góc nhìn mắt', kDay: 'Ngày / đêm', kChat: 'Trò chuyện', kHalls: 'Các điện', kCandle: 'Thắp nến', kWish: 'Ý nguyện', kFortune: 'Xin xăm',
-    moveHelp: 'WASD hoặc phím mũi tên để đi. Q / E để xoay. Cuộn hết cỡ để nhìn bằng mắt mình. Lên bậc vào điện, bấm 4 để quỳ lễ.',
-    moveHelpTouch: 'Dùng cần điều khiển để đi. Chạm các nút để thực hiện. Chọn góc nhìn mắt để nhìn gần hơn.',
     invite: 'Mời bạn bè', inviteCopied: 'Đã chép đường dẫn. Bạn bè mở nó sẽ vào cùng sân với bạn.',
     alone: 'Đang viếng một mình', connecting: 'Đang kết nối…', live: 'Trực tuyến · {n} người',
     nameErr: 'Vui lòng chọn tên khác: 2 đến 18 chữ, không thô tục, không dùng danh xưng của thầy hay nhà chùa.',
@@ -70,6 +68,10 @@ const S = {
     dogWag: 'Chó chùa vẫy đuôi.', lay: 'Lạy: quỳ và cúi lạy. Bấm 1 để đứng dậy.', eyeView: 'Góc nhìn mắt. Kéo để nhìn quanh, cuộn ra hoặc bấm V để thoát.',
     hallEnter: '{hall} · {deity}. Bấm 4 để quỳ lễ.', allHalls: 'Bạn đã viếng tất cả các điện. A Di Đà Phật.', giftGot: 'Nhà chùa tặng bạn: {gift}',
     bigBell: 'Đại hồng chung · chuông {when}', morning: 'sáng', evening: 'chiều',
+    arrived: 'đã vào chùa',
+    stallFreeSay: 'Cô bán hàng: "Sạp này còn trống đó. Con có muốn mở sạp ở đây không?"', stallFreeTitle: 'Sạp này còn trống',
+    stallFreeText: 'Sạp này chưa có ai thuê. Mở sạp của bạn ở đây với {price} một tháng: tên, logo, trang web và thực đơn hiện cho mọi khách đi ngang.',
+    stallRent: 'Thuê sạp này', stallNo: 'Để sau', stallHeld: 'Sạp này đang có người làm thủ tục thuê.', stallVisit: 'Ghé trang của sạp', stallMenu: 'Thực đơn',
     chatPlaceholder: 'Nói điều tử tế… (Enter để gửi)', chatSlow: 'Chậm lại một chút nhé.', mute: 'Tắt tiếng', unmute: 'Bật tiếng', report: 'Báo cáo',
     reported: 'Cảm ơn bạn. Nhà chùa sẽ xem xét.', reportWhy: 'Chuyện gì đã xảy ra?',
     hallsTitle: 'Đến một điện', hallsText: 'Tự đi bộ đến, hoặc đến thẳng cửa điện.',
@@ -91,9 +93,9 @@ const S = {
   },
 };
 
-let lang = 'en';
-try { lang = localStorage.getItem('antam-lang') || ((navigator.language || '').toLowerCase().startsWith('vi') ? 'vi' : 'en'); } catch (e) { /* storage blocked */ }
-if (!S[lang]) lang = 'en';
+let lang = 'vi';
+try { lang = localStorage.getItem('antam-lang') || 'vi'; } catch (e) { /* storage blocked */ }
+if (!S[lang]) lang = 'vi';
 
 export function getLang() { return lang; }
 
@@ -112,4 +114,5 @@ export function applyStatic(root = document) {
   document.documentElement.lang = lang;
   root.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   root.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+  root.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
 }

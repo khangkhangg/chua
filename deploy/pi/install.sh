@@ -41,7 +41,7 @@ say() { printf '\n\033[1;33m== %s\033[0m\n' "$*"; }
 say "1/7 Packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-PKGS="git curl nginx mariadb-server php-fpm php-cli php-mysql php-mbstring php-intl php-curl"
+PKGS="git curl nginx mariadb-server php-fpm php-cli php-mysql php-mbstring php-intl php-curl php-gd"
 [ "$REDIS" = 1 ] && PKGS="$PKGS redis-server php-redis"
 # shellcheck disable=SC2086
 apt-get install -y -qq $PKGS >/dev/null
@@ -107,6 +107,11 @@ chown -R root:www-data "$DEST"
 find "$DEST" -path "$DEST/.git" -prune -o -type d -exec chmod 755 {} +
 find "$DEST" -path "$DEST/.git" -prune -o -type f -exec chmod 644 {} +
 chmod 640 "$CONF"
+# Stall logos live outside the code, because update.sh resets the code's owner and modes.
+UPLOADS=/var/www/chua-uploads
+install -d -o www-data -g www-data -m 755 "$UPLOADS" "$UPLOADS/logos"
+echo "17 * * * * www-data php $DEST/scripts/stalls-cron.php >> /var/log/chua-stalls.log 2>&1" > /etc/cron.d/chua-stalls
+touch /var/log/chua-stalls.log && chown www-data /var/log/chua-stalls.log
 (cd "$DEST" && sudo -u www-data php -r 'require "src/bootstrap.php"; Chua\Db::get()->query("SELECT 1"); echo "database ok\n";')
 
 say "5/7 Live server (chua-realtime on 127.0.0.1:$WS_PORT)"
@@ -150,6 +155,9 @@ server {
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
     }
+
+    # Stall logos: plain files only; ^~ keeps the PHP rule below from ever running anything here.
+    location ^~ /uploads/ { alias /var/www/chua-uploads/; add_header X-Content-Type-Options nosniff; expires 1h; }
 
     location / { try_files \$uri \$uri/ /index.php?\$query_string; }
 
