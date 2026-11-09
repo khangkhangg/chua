@@ -29,6 +29,15 @@ $v = $e($config['asset_version']);
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Serif+Display:ital,wght@0,600;1,500&display=swap">
 <link rel="stylesheet" href="css/temple.css?v=<?= $v ?>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
+<!-- Google tag (gtag.js). Only on this page: the vendor page's sign-in link carries a token in its address. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-E9MPVQ9STE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-E9MPVQ9STE');
+</script>
 </head>
 <body>
 <canvas id="scene" aria-label="Temple courtyard"></canvas>
