@@ -298,6 +298,7 @@ Status notes (November 2026):
 - **F50** SePay and PayOS webhooks are checked with tests and a simulated payment. A real bank transfer has not been tried yet (step 8 of DEPLOY.md).
 - **F56** Load scripts exist (`tests/load/bots.php`, `tests/load/k6_walkers.js`). The 10,000-visitor run itself needs k6 and the real server.
 - **F58** Checked on iPhone 13 and Pixel 7 emulation: no sideways scrolling, no overlapping panels, the joystick walks, dialogs fit.
+- **Shared hosting:** a polling mode (`api/live.php`, MySQL MEMORY tables) runs everything without a background service, and a first-run setup page chooses between shared hosting and a VPS. Tested under Apache in the public_html layout: the full two-visitor browser test passes and private files are refused. See `HOSTINGER.md`.
 - Still open: **F04** needs a person to review `docs/CULTURAL-REVIEW.md`.
 
 ## 7. Prompts per feature

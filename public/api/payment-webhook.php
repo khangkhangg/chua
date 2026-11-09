@@ -16,7 +16,7 @@ if (!is_array($body)) {
 }
 $parsed = $pay['provider'] === 'payos'
     ? Webhooks::payos($body, (string) $pay['payos_checksum_key'])
-    : Webhooks::sepay($body, (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? ''), (string) $pay['sepay_api_key']);
+    : Webhooks::sepay($body, (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? (function_exists('getallheaders') ? (array_change_key_case(getallheaders())['authorization'] ?? '') : '')), (string) $pay['sepay_api_key']);
 if ($parsed === null) {
     Http::json(['success' => false, 'error' => 'auth'], 401);
 }

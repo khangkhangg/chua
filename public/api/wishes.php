@@ -32,6 +32,6 @@ $text = NameFilter::maskText($raw, 140);
 $pdo->prepare('INSERT INTO wishes (guest_id, name, text, status, ip_hash, created_at) VALUES (?,?,?,?,?,?)')
     ->execute([$guest['id'], $guest['name'], $text, $status, $ipHash, Db::now()]);
 if ($status === 'visible') {
-    Bus::fromConfig()->publish('wish', ['name' => $guest['name']]);
+    Chua\Events::publish('wish', ['name' => $guest['name']]);
 }
 Http::json(['ok' => true, 'status' => $status, 'wish' => ['name' => $guest['name'], 'text' => $text]]);

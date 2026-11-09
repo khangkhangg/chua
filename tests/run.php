@@ -243,5 +243,146 @@ check('courtyard does not see into halls', count($v[$outside->id]) === 0);
 $rs->enterRoom($people[0], -1, 30);
 check('leaving a hall returns to the courtyard', $people[0]->room === '');
 
+// ---------- live visitors by polling (shared hosting) ----------
+use Chua\Realtime\PollHub;
+foreach (['live_presence', 'live_events', 'reports', 'rate_limits'] as $t) {
+    $pdo->exec("DELETE FROM $t");
+}
+$ja = PollHub::join(['name' => 'Linh', 'look' => ['outfit' => 'aodai', 'color' => '#B8322A']], 'ipa');
+check('poll join welcome', ($ja['t'] ?? '') === 'welcome' && strlen($ja['sid']) === 32 && $ja['players'] === []);
+$jb = PollHub::join(['name' => 'An', 'invite' => $ja['shard']], 'ipb');
+check('poll invite joins same courtyard', $jb['shard'] === $ja['shard'] && count($jb['players']) === 1 && $jb['players'][0]['look']['color'] === '#b8322a');
+check('poll seed follows courtyard', $jb['seed'] === $ja['seed']);
+check('poll bad name refused', (PollHub::join(['name' => 'đụ quá'], 'ipc')['code'] ?? '') === 'name');
+$sa = PollHub::sync(['sid' => $ja['sid'], 'x' => 1, 'z' => 5, 'h' => 10, 'pose' => 3, 'since' => $ja['since']]);
+$sb = PollHub::sync(['sid' => $jb['sid'], 'x' => 2, 'z' => 5, 'h' => 20, 'pose' => 0, 'since' => $jb['since'],
+    'out' => [['t' => 'chat', 'text' => 'Chúc bình an lồn'], ['t' => 'act', 'a' => 'bell'], ['t' => 'act', 'a' => 'dance']]]);
+check('poll sees neighbour with pose', ($sb['players'][0][0] ?? 0) === $ja['id'] && $sb['players'][0][4] === 3);
+check('poll counts', $sb['here'] === 2 && $sb['online'] >= 2);
+$sa2 = PollHub::sync(['sid' => $ja['sid'], 'x' => 1, 'z' => 5, 'since' => $sa['since']]);
+$types = array_map(static fn ($e) => $e['type'] . ':' . ($e['data']['text'] ?? $e['data']['a'] ?? ''), $sa2['events']);
+check('poll chat masked and delivered', in_array('chat:Chúc bình an ***', $types, true));
+check('poll bell delivered, unknown action dropped', in_array('act:bell', $types, true) && !in_array('act:dance', $types, true));
+$sb2 = PollHub::sync(['sid' => $jb['sid'], 'x' => 2, 'z' => 5, 'since' => $sb['since'], 'out' => [['t' => 'chat', 'text' => 'again']]]);
+check('poll chat flood slowed', ($sb2['errors'][0]['code'] ?? '') === 'slow');
+$sb3 = PollHub::sync(['sid' => $jb['sid'], 'x' => 40, 'z' => 60, 'since' => $sb2['since']]);
+PollHub::sync(['sid' => $ja['sid'], 'x' => 1, 'z' => 5, 'since' => 0, 'out' => [['t' => 'chat', 'text' => 'xa quá']]]);
+$sb4 = PollHub::sync(['sid' => $jb['sid'], 'x' => 40, 'z' => 60, 'since' => $sb3['since']]);
+check('poll chat stays within 30 m', !array_filter($sb4['events'], static fn ($e) => $e['type'] === 'chat'));
+check('poll view radius respected', $sb4['players'] === []);
+$ra = PollHub::sync(['sid' => $ja['sid'], 'x' => 0, 'z' => -14, 'since' => 0, 'out' => [['t' => 'room', 'h' => 0]]]);
+$rb = PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -6, 'since' => 0]);
+check('poll hall room set', $ra['room'] === 'h0#1');
+check('poll courtyard does not see into the hall', $rb['players'] === []);
+$rb2 = PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -14, 'since' => 0, 'out' => [['t' => 'room', 'h' => 0], ['t' => 'report', 'id' => $ja['id'], 'reason' => 'test']]]);
+$rb3 = PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -14, 'since' => 0]);
+check('poll same room sees each other', ($rb3['players'][0][0] ?? 0) === $ja['id']);
+check('poll report stored', $rb2['reported'] === true && (int) $pdo->query("SELECT COUNT(*) FROM reports WHERE reported = 'Linh'")->fetchColumn() === 1);
+check('poll unknown visitor told to rejoin', (PollHub::sync(['sid' => str_repeat('0', 32)])['code'] ?? '') === 'gone');
+$pdo->prepare('UPDATE live_presence SET updated_at = updated_at - 30 WHERE sid = ?')->execute([$ja['sid']]);
+check('poll stale visitor disappears', PollHub::sync(['sid' => $jb['sid'], 'x' => 1, 'z' => -14, 'since' => 0])['players'] === []);
+PollHub::leave($jb['sid']);
+check('poll leave removes', (PollHub::sync(['sid' => $jb['sid']])['code'] ?? '') === 'gone');
+for ($i = 0; $i < 6; $i++) {
+    PollHub::join(['name' => 'Same' . chr(65 + $i)], 'same-net');
+}
+check('poll per-network limit', (PollHub::join(['name' => 'SameG'], 'same-net')['code'] ?? '') === 'too_many');
+
+// ---------- first-run setup ----------
+use Chua\Setup;
+check('setup local db only', Setup::localHost('localhost') && Setup::localHost('127.0.0.1') && !Setup::localHost('db.evil.example'));
+[$vals, $errs] = Setup::fromForm(['hosting' => 'shared', 'db_host' => 'localhost', 'db_name' => 'chua_test', 'db_user' => 'chua', 'db_pass' => 'x', 'admin_pass' => 'long-enough-pw', 'admin_pass2' => 'long-enough-pw'], 'chua.example.com');
+check('setup shared means polling', !$errs && $vals['realtime']['mode'] === 'poll' && $vals['redis']['enabled'] === false && $vals['base_url'] === 'https://chua.example.com');
+check('setup admin hash works', password_verify('long-enough-pw', $vals['admin']['password_hash']) && strlen($vals['secret']) === 64);
+[$vv] = Setup::fromForm(['hosting' => 'vps', 'redis' => '1', 'db_name' => 'd', 'db_user' => 'u', 'admin_pass' => 'long-enough-pw', 'admin_pass2' => 'long-enough-pw'], 'chua.example.com');
+check('setup vps means websocket', $vv['realtime']['mode'] === 'ws' && $vv['realtime']['public_url'] === 'wss://chua.example.com/ws' && $vv['redis']['enabled'] === true);
+[, $e2] = Setup::fromForm(['db_host' => 'db.evil.example', 'db_name' => 'd', 'db_user' => 'u', 'admin_pass' => 'short', 'admin_pass2' => 'other'], 'x');
+check('setup refuses remote db and weak password', count($e2) === 3);
+[, $e3] = Setup::fromForm(['db_name' => 'd', 'db_user' => 'u', 'admin_pass' => 'long-enough-pw', 'admin_pass2' => 'long-enough-pw', 'pay_on' => '1', 'pay_bin' => '12'], 'x');
+check('setup checks bank BIN', count($e3) === 1);
+$tmp = tempnam(sys_get_temp_dir(), 'cfg');
+file_put_contents($tmp, Setup::renderConfig($vals));
+$loaded = require $tmp;
+unlink($tmp);
+check('setup config file loads back', $loaded === $vals);
+$conn = Setup::connect(Setup::dsn('127.0.0.1', 0, 'chua_test'), 'chua', getenv('CHUA_TEST_DB_PASS') ?: 'devpass');
+check('setup connects', $conn['ok'] === true);
+check('setup schema installs twice', Setup::installSchema($conn['pdo']) === ['001_schema.sql', '002_live.sql', '003_stalls.sql'] && Setup::installSchema($conn['pdo']) === ['001_schema.sql', '002_live.sql', '003_stalls.sql']);
+check('setup wrong password explained', str_contains(Setup::connect(Setup::dsn('127.0.0.1', 0, 'chua_test'), 'chua', 'wrong')['error'] ?? '', 'refused'));
+check('setup locked while config exists', Setup::needed() === false && Setup::writeConfig('x') === false);
+
+// ---------- market stalls (docs/STALLS.md) ----------
+use Chua\Notify;
+use Chua\Stalls;
+use Chua\Vendors;
+
+foreach (['stall_rentals', 'vendor_logins', 'vendors'] as $t) {
+    $pdo->exec("DELETE FROM $t");
+}
+Stalls::free(0);
+Stalls::free(5);
+$lastLink = static fn (string $kind): string => preg_match($kind === 'login' ? '/login=([a-f0-9]{64})/' : '/t=([a-f0-9]{64})/', (string) (end(Notify::$sent)[$kind === 'login' ? 3 : 1] ?? ''), $m) ? $m[1] : '';
+Notify::$sent = [];
+check('vendor bad email refused', Vendors::requestLink('not-an-email') === false);
+check('vendor link emailed', Vendors::requestLink('An@Example.com') && (Notify::$sent[0][1] ?? '') === 'an@example.com');
+$link = $lastLink('login');
+$va = Vendors::login($link);
+check('vendor link signs in', $va !== null);
+check('vendor link works once', Vendors::login($link) === null);
+Vendors::requestLink('bao@example.com');
+$vb = (int) Vendors::login($lastLink('login'));
+$ra = Stalls::rent($va, 0, 2);
+check('rent holds the stall', ($ra['amount'] ?? 0) === 2 * Stalls::price() && str_starts_with($ra['code'] ?? '', 'SAP') && Stalls::publicList()[0]['state'] === 'held');
+check('held stall refused to others', (Stalls::rent($vb, 0, 1)['error'] ?? '') === 'taken');
+check('bad months refused', (Stalls::rent($va, 1, 13)['error'] ?? '') === 'months');
+check('renting again reuses the request', (int) Stalls::rent($va, 0, 3)['id'] === (int) $ra['id'] && (int) Stalls::rental((int) $ra['id'])['months'] === 3);
+Notify::$sent = [];
+check('claim tells telegram with a link', Stalls::claim($va, (int) $ra['id']) !== null && (Notify::$sent[0][0] ?? '') === 'telegram' && ($t1 = $lastLink('decide')) !== '');
+check('other vendor cannot claim', Stalls::claim($vb, (int) $ra['id']) === null);
+check('not yet emails the renter', Stalls::decide($t1, false) !== null && str_contains((string) end(Notify::$sent)[2], 'chưa nhận') && Stalls::rental((int) $ra['id'])['status'] === 'pending');
+check('decision link works once', Stalls::decide($t1, true) === null);
+Stalls::claim($va, (int) $ra['id']);
+$d = Stalls::decide($lastLink('decide'), true);
+$pub = Stalls::publicList()[0];
+check('approve rents the stall', $d !== null && $pub['state'] === 'rented' && !isset($pub['name']));
+check('approve emails the renter', str_contains((string) end(Notify::$sent)[2], 'Đã nhận'));
+$until = static fn (): int => (int) strtotime($pdo->query('SELECT paid_until FROM stalls WHERE slot = 0')->fetchColumn() . ' UTC');
+check('paid for 3 months', abs($until() - strtotime('+3 months')) < 120);
+check('profile refuses http link', Stalls::saveProfile($va, 0, 'Phở Bà Tư', 'http://pho.vn', []) === 'url');
+check('profile refuses rude name', Stalls::saveProfile($va, 0, 'đụ quá', '', []) === 'name');
+check('profile refuses 13 dishes', Stalls::saveProfile($va, 0, 'Phở Bà Tư', '', array_fill(0, 13, ['Phở', '40000'])) === 'menu');
+check('other vendor cannot edit', Stalls::saveProfile($vb, 0, 'Phở', '', []) === 'stall');
+check('profile saved', Stalls::saveProfile($va, 0, 'Phở Bà Tư', 'https://pho.example.vn', [['Phở bò', '45.000'], ['', '']]) === null);
+$pub = Stalls::publicList()[0];
+check('shop shown to visitors', ($pub['name'] ?? '') === 'Phở Bà Tư' && ($pub['menu'][0]['p'] ?? 0) === 45000 && count($pub['menu']) === 1);
+$rr = Stalls::rent($va, 0, 1);
+Stalls::claim($va, (int) $rr['id']);
+Stalls::decide($lastLink('decide'), true);
+check('renewal extends from the current end', abs($until() - strtotime('+4 months')) < 120);
+$png = tempnam(sys_get_temp_dir(), 'lg');
+imagepng(imagecreatetruecolor(400, 200), $png);
+check('logo re-drawn at 256 px', Stalls::saveLogo($va, 0, $png) === null
+    && (getimagesize(Stalls::uploadsDir() . '/logos/' . $pdo->query('SELECT logo FROM stalls WHERE slot = 0')->fetchColumn())[0] ?? 0) === 256);
+file_put_contents($png, '<?php echo 1;');
+check('non-image refused', Stalls::saveLogo($va, 0, $png) === 'logo');
+unlink($png);
+Notify::$sent = [];
+Stalls::takeDown(0, 'Bán vé số');
+check('taken down hides the shop and emails', Stalls::publicList()[0]['state'] === 'closed' && !isset(Stalls::publicList()[0]['name']) && str_contains((string) (Notify::$sent[0][2] ?? ''), 'gỡ'));
+check('closed stall cannot be rented', (Stalls::rent($vb, 0, 1)['error'] ?? '') === 'closed');
+Stalls::restore(0);
+check('restore brings it back', Stalls::publicList()[0]['state'] === 'rented');
+$pdo->exec('UPDATE stalls SET paid_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 2 DAY) WHERE slot = 0');
+Notify::$sent = [];
+$c1 = Stalls::cron();
+$c2 = Stalls::cron();
+check('reminder sent once', $c1['reminded'] === 1 && $c2['reminded'] === 0 && str_contains((string) (Notify::$sent[0][2] ?? ''), 'sắp hết hạn'));
+$rb = Stalls::rent($vb, 5, 1);
+$pdo->exec('UPDATE stall_rentals SET created_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 HOUR) WHERE id = ' . (int) $rb['id']);
+Stalls::cron();
+check('unpaid request expires and frees the stall', Stalls::rental((int) $rb['id'])['status'] === 'expired' && Stalls::publicList()[5]['state'] === 'free');
+Stalls::free(0);
+check('free clears the stall', Stalls::publicList()[0]['state'] === 'free');
+
 printf("%d passed, %d failed\n", $passed, $failed);
 exit($failed ? 1 : 0);

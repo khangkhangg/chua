@@ -66,6 +66,8 @@ $SSH "chown -R root:www-data $DEST && find $DEST -type d -exec chmod 755 {} + &&
 
 ## 4. Server settings
 
+Shortcut: skip the commands below, open `https://chua.vietnamcos.com` after step 6 and use the setup page that a fresh install shows. Choose **VPS**; it checks the database, creates the tables and writes `config.local.php` (the web server user needs write access to the folder for that step). The manual way:
+
 ```bash
 $SSH "cp $DEST/config.local.example.php $DEST/config.local.php && chown root:www-data $DEST/config.local.php && chmod 640 $DEST/config.local.php"
 $SSH "php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'"     # paste as 'secret'

@@ -9,12 +9,9 @@ const S = {
     scene: 'Scene', time: 'Time of day', followClock: 'Follow my clock', pixel: 'Pixel size', visitors: 'Visitors', smoke: 'Incense smoke',
     smokeOff: 'Off', smokeLittle: 'A little', smokeFull: 'Full', quality: 'Graphics', qAuto: 'Auto', qLow: 'Low', qHigh: 'High',
     volume: 'Volume', volAll: 'All sound', volNature: 'Nature', volTemple: 'Bells and chanting', reduceMotion: 'Reduce motion', language: 'Language',
-    soundOn: 'Sound: on', soundOff: 'Sound: off',
-    enterTitle: 'Enter the temple', yourName: 'Your name', clothing: 'Clothing', colour: 'Colour', everyday: 'Everyday', walkIn: 'Walk in · sound on',
+    enterTitle: 'Enter the temple', yourName: 'Your name', clothing: 'Clothing', colour: 'Colour', everyday: 'Everyday', walkIn: 'Enter',
     welcome: 'Welcome, {name}', kStand: 'Stand', kBow: 'Xá (bow)', kKneel: 'Quỳ (kneel)', kSit: 'Thiền (sit)', kIncense: 'Incense', kBell: 'Ring bell',
     kHelp: 'Help out', kEye: 'Eye view', kDay: 'Day / night', kChat: 'Chat', kHalls: 'Halls', kCandle: 'Candle', kWish: 'Wish', kFortune: 'Xin xăm',
-    moveHelp: 'WASD or arrows to walk. Q / E turn. Scroll in all the way for your own eye view. Walk up the stairs into any hall, then press 4 to kneel and pray.',
-    moveHelpTouch: 'Use the joystick to walk. Tap the buttons for actions. Pinch or use Eye view to look closer.',
     invite: 'Invite friends', inviteCopied: 'Invite link copied. Friends who open it join your courtyard.',
     alone: 'Visiting on your own', connecting: 'Connecting…', live: 'Live · {n} here',
     nameErr: 'Please choose another name: 2 to 18 letters, no rude words, not a monk or staff title.',
@@ -27,6 +24,10 @@ const S = {
     dogWag: 'The temple dog wags its tail.', lay: 'Lạy: kneeling bows. Press 1 to stand up.', eyeView: 'Eye view. Drag to look around, scroll out or press V to leave.',
     hallEnter: '{hall} · {deity}. Press 4 to kneel and pray.', allHalls: 'You have visited every hall. A Di Đà Phật.', giftGot: 'Nhà chùa tặng bạn: {gift}',
     bigBell: 'Đại hồng chung · the great bell rings for the {when}', morning: 'dawn', evening: 'evening',
+    arrived: 'came in',
+    stallFreeSay: 'Stall keeper: "This stall is free. Want to open a shop here?"', stallFreeTitle: 'This stall is free',
+    stallFreeText: 'Nobody rents this stall yet. Open your own shop here for {price} a month: your name, logo, website and menu for every visitor who walks by.',
+    stallRent: 'Rent this stall', stallNo: 'Not now', stallHeld: 'Someone is renting this stall right now.', stallVisit: 'Visit the shop', stallMenu: 'Menu',
     chatPlaceholder: 'Say something kind… (Enter to send)', chatSlow: 'Slow down a little.', mute: 'Mute', unmute: 'Unmute', report: 'Report',
     reported: 'Thank you. The temple will look at this.', reportWhy: 'What happened?',
     hallsTitle: 'Go to a hall', hallsText: 'Walk there yourself, or go straight to the hall door.',
@@ -38,12 +39,17 @@ const S = {
     candleOff: 'Candle offerings are not open yet.', candleSimulate: 'Simulate payment (test mode)', candleDonations: 'See all offerings', burning: '{n} candles burning',
     wishTitle: 'Treo ý nguyện', wishText: 'Hang a wish on the Bodhi tree. Kind wishes appear for everyone; others wait for the temple to read them.',
     wishPlaceholder: 'Nguyện cho…', wishSend: 'Hang my wish', wishThanks: 'Your wish hangs on the Bodhi tree.', wishPending: 'Thank you. The temple will read your wish before it appears.',
-    wishEmpty: 'No wishes yet. Be the first.', close: 'Close', fortuneTitle: 'Xin xăm', fortuneShake: 'Shaking the cup…', fortuneStick: 'Stick number {n}',
-    fortuneNote: 'A fortune is a quiet thought for the day, not a promise. Draw again tomorrow.', lowered: 'Graphics lowered to keep things smooth.',
+    wishEmpty: 'No wishes yet. Be the first.', close: 'Close', fortuneTitle: 'Xin xăm', fortuneShake: 'Shaking the cup… focus your heart', fortuneStick: 'Stick number {n}',
+    fortuneNote: 'Just for fun. Being kind is the best fortune there is.',
+    fortuneAsk: 'The fortune teller: "Come, shake the cup with a sincere heart. Love, money or deadlines, ask away."',
+    fortuneDraw: 'Draw a stick', fortuneAgain: 'Draw another', fortuneShakeAgain: 'Shake again',
+    keoUp: 'You toss the moon blocks: both land face down. The gods say "ask nicely". Shake again.',
+    keoDown: 'You toss the moon blocks: both land face up. The gods are laughing, no answer yet. Shake again.',
+    fortuneLove: 'Love', fortuneMoney: 'Money', fortuneWork: 'Work and study', lowered: 'Graphics lowered to keep things smooth.',
     offline: 'Saved in this browser only.',
     candleFar: 'The candle stand is near the Bodhi tree, left of the urn. Walk next to it and press C.',
     wishFar: 'The wishing tree is the big Bodhi tree on the left of the courtyard. Walk under it and press T.',
-    fortuneFar: 'The fortune cup (ống xăm) is inside the main hall, left of the altar. Walk next to it and press X.',
+    fortuneFar: 'The XIN XĂM stall is in the courtyard, behind the incense urn. Walk up to it and press X.',
     needServer: 'This needs the temple server, which is not reachable right now.',
   },
   vi: {
@@ -53,12 +59,9 @@ const S = {
     scene: 'Cảnh', time: 'Giờ trong ngày', followClock: 'Theo giờ của tôi', pixel: 'Cỡ điểm ảnh', visitors: 'Khách viếng', smoke: 'Khói nhang',
     smokeOff: 'Tắt', smokeLittle: 'Một chút', smokeFull: 'Đầy đủ', quality: 'Đồ họa', qAuto: 'Tự động', qLow: 'Thấp', qHigh: 'Cao',
     volume: 'Âm lượng', volAll: 'Tất cả', volNature: 'Thiên nhiên', volTemple: 'Chuông và tụng kinh', reduceMotion: 'Giảm chuyển động', language: 'Ngôn ngữ',
-    soundOn: 'Âm thanh: bật', soundOff: 'Âm thanh: tắt',
-    enterTitle: 'Vào chùa', yourName: 'Tên của bạn', clothing: 'Trang phục', colour: 'Màu', everyday: 'Thường ngày', walkIn: 'Vào chùa · bật âm thanh',
+    enterTitle: 'Vào chùa', yourName: 'Tên của bạn', clothing: 'Trang phục', colour: 'Màu', everyday: 'Thường ngày', walkIn: 'Vào chùa',
     welcome: 'Chào {name}', kStand: 'Đứng', kBow: 'Xá', kKneel: 'Quỳ', kSit: 'Thiền', kIncense: 'Thắp nhang', kBell: 'Thỉnh chuông',
     kHelp: 'Giúp chùa', kEye: 'Góc nhìn mắt', kDay: 'Ngày / đêm', kChat: 'Trò chuyện', kHalls: 'Các điện', kCandle: 'Thắp nến', kWish: 'Ý nguyện', kFortune: 'Xin xăm',
-    moveHelp: 'WASD hoặc phím mũi tên để đi. Q / E để xoay. Cuộn hết cỡ để nhìn bằng mắt mình. Lên bậc vào điện, bấm 4 để quỳ lễ.',
-    moveHelpTouch: 'Dùng cần điều khiển để đi. Chạm các nút để thực hiện. Chọn góc nhìn mắt để nhìn gần hơn.',
     invite: 'Mời bạn bè', inviteCopied: 'Đã chép đường dẫn. Bạn bè mở nó sẽ vào cùng sân với bạn.',
     alone: 'Đang viếng một mình', connecting: 'Đang kết nối…', live: 'Trực tuyến · {n} người',
     nameErr: 'Vui lòng chọn tên khác: 2 đến 18 chữ, không thô tục, không dùng danh xưng của thầy hay nhà chùa.',
@@ -70,6 +73,10 @@ const S = {
     dogWag: 'Chó chùa vẫy đuôi.', lay: 'Lạy: quỳ và cúi lạy. Bấm 1 để đứng dậy.', eyeView: 'Góc nhìn mắt. Kéo để nhìn quanh, cuộn ra hoặc bấm V để thoát.',
     hallEnter: '{hall} · {deity}. Bấm 4 để quỳ lễ.', allHalls: 'Bạn đã viếng tất cả các điện. A Di Đà Phật.', giftGot: 'Nhà chùa tặng bạn: {gift}',
     bigBell: 'Đại hồng chung · chuông {when}', morning: 'sáng', evening: 'chiều',
+    arrived: 'đã vào chùa',
+    stallFreeSay: 'Cô bán hàng: "Sạp này còn trống đó. Con có muốn mở sạp ở đây không?"', stallFreeTitle: 'Sạp này còn trống',
+    stallFreeText: 'Sạp này chưa có ai thuê. Mở sạp của bạn ở đây với {price} một tháng: tên, logo, trang web và thực đơn hiện cho mọi khách đi ngang.',
+    stallRent: 'Thuê sạp này', stallNo: 'Để sau', stallHeld: 'Sạp này đang có người làm thủ tục thuê.', stallVisit: 'Ghé trang của sạp', stallMenu: 'Thực đơn',
     chatPlaceholder: 'Nói điều tử tế… (Enter để gửi)', chatSlow: 'Chậm lại một chút nhé.', mute: 'Tắt tiếng', unmute: 'Bật tiếng', report: 'Báo cáo',
     reported: 'Cảm ơn bạn. Nhà chùa sẽ xem xét.', reportWhy: 'Chuyện gì đã xảy ra?',
     hallsTitle: 'Đến một điện', hallsText: 'Tự đi bộ đến, hoặc đến thẳng cửa điện.',
@@ -81,19 +88,24 @@ const S = {
     candleOff: 'Chưa mở dâng nến.', candleSimulate: 'Giả lập thanh toán (chế độ thử)', candleDonations: 'Xem công đức', burning: '{n} ngọn nến đang cháy',
     wishTitle: 'Treo ý nguyện', wishText: 'Treo ý nguyện lên cây bồ đề. Lời nguyện tốt lành hiện ngay; lời khác chờ nhà chùa đọc trước.',
     wishPlaceholder: 'Nguyện cho…', wishSend: 'Treo ý nguyện', wishThanks: 'Ý nguyện của bạn đã treo trên cây bồ đề.', wishPending: 'Cảm ơn bạn. Nhà chùa sẽ đọc trước khi hiện.',
-    wishEmpty: 'Chưa có ý nguyện. Hãy là người đầu tiên.', close: 'Đóng', fortuneTitle: 'Xin xăm', fortuneShake: 'Đang lắc ống xăm…', fortuneStick: 'Quẻ số {n}',
-    fortuneNote: 'Quẻ xăm là lời nhắn nhẹ nhàng cho hôm nay, không phải lời hứa. Ngày mai xin lại nhé.', lowered: 'Đã giảm đồ họa để chạy mượt hơn.',
+    wishEmpty: 'Chưa có ý nguyện. Hãy là người đầu tiên.', close: 'Đóng', fortuneTitle: 'Xin xăm', fortuneShake: 'Đang lắc ống xăm… thành tâm nha', fortuneStick: 'Xăm số {n}',
+    fortuneNote: 'Xăm vui thôi nha. Sống tử tế mới là quẻ xịn nhất.',
+    fortuneAsk: 'Thầy giải xăm: "Lại đây con, lắc ống xăm cho thành tâm. Tình duyên, tiền bạc hay deadline, hỏi gì cũng được."',
+    fortuneDraw: 'Xin xăm', fortuneAgain: 'Xin quẻ nữa', fortuneShakeAgain: 'Lắc lại',
+    keoUp: 'Gieo keo: hai keo cùng úp. Thần bảo "hỏi lại cho tử tế coi". Lắc lại nha.',
+    keoDown: 'Gieo keo: hai keo cùng ngửa. Thần đang cười, chưa chịu trả lời. Lắc lại nha.',
+    fortuneLove: 'Tình duyên', fortuneMoney: 'Tiền bạc', fortuneWork: 'Công việc & học hành', lowered: 'Đã giảm đồ họa để chạy mượt hơn.',
     offline: 'Chỉ lưu trên trình duyệt này.',
     candleFar: 'Giá nến ở gần cây bồ đề, bên trái lư hương. Đến gần rồi bấm C.',
     wishFar: 'Cây ý nguyện là cây bồ đề lớn bên trái sân. Đứng dưới tán cây rồi bấm T.',
-    fortuneFar: 'Ống xăm ở trong chánh điện, bên trái bàn thờ. Đến gần rồi bấm X.',
+    fortuneFar: 'Sạp XIN XĂM ở giữa sân, phía sau lư hương. Đến gần rồi bấm X.',
     needServer: 'Việc này cần máy chủ của chùa, hiện chưa kết nối được.',
   },
 };
 
-let lang = 'en';
-try { lang = localStorage.getItem('antam-lang') || ((navigator.language || '').toLowerCase().startsWith('vi') ? 'vi' : 'en'); } catch (e) { /* storage blocked */ }
-if (!S[lang]) lang = 'en';
+let lang = 'vi';
+try { lang = localStorage.getItem('antam-lang') || 'vi'; } catch (e) { /* storage blocked */ }
+if (!S[lang]) lang = 'vi';
 
 export function getLang() { return lang; }
 
@@ -112,4 +124,5 @@ export function applyStatic(root = document) {
   document.documentElement.lang = lang;
   root.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   root.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+  root.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
 }

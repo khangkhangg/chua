@@ -6,7 +6,7 @@ declare(strict_types=1);
 // not committed. See config.local.example.php.
 $config = [
     'temple_name'   => 'An Tâm Nam Chùa',
-    'asset_version' => '0.3.0',
+    'asset_version' => '0.9.0',
     'base_url'      => 'https://chua.vietnamcos.com',
     // Long random string used to hash visitor IP addresses. Set it in config.local.php.
     'secret'        => 'change-me',
@@ -30,6 +30,10 @@ $config = [
 
     'realtime' => [
         'enabled'     => false,
+        // 'ws': a realtime server (VPS). 'poll': no server, each page checks in about once
+        // a second through api/live.php and MySQL (shared hosting such as Hostinger).
+        'mode'        => 'ws',
+        'poll_ms'     => 1000,
         'node_id'     => 'node1',
         'public_url'  => 'wss://chua.vietnamcos.com/ws',  // what browsers connect to
         'host'        => '127.0.0.1',                       // what the server listens on
